@@ -21,3 +21,12 @@ slorber:
     linkedin: sebastienlorber
     github: slorber
     newsletter: https://thisweekinreact.com
+
+zheyuan:
+  name: Zheyuan Wu
+  title: Full Stack Engineer
+  url: https://github.com/trance-0
+  image_url: https://github.com/trance-0.png
+  page: true
+  socials:
+    github: trance-0

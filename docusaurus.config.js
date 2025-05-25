@@ -77,7 +77,7 @@ const config = {
         title: 'Algorithm workbook',
         logo: {
           alt: 'Algorithm workbook Logo',
-          src: 'img/logo.svg',
+          src: 'img/logo.png',
         },
         items: [
           {
