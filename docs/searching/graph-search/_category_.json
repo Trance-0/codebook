@@ -1,0 +1,8 @@
+{
+  "label": "Graph Search",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Graph search algorithms"
+  }
+}

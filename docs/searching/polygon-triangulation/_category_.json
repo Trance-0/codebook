@@ -1,0 +1,8 @@
+{
+  "label": "Polygon Triangulation",
+  "position": 8,
+  "link": {
+    "type": "generated-index",
+    "description": "Polygon triangulation algorithms"
+  }
+}

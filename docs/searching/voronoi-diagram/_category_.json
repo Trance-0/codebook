@@ -1,0 +1,8 @@
+{   
+  "label": "Voronoi Diagram",
+  "position": 10,
+  "link": {
+    "type": "generated-index",
+    "description": "Voronoi diagram algorithms"
+  }
+}

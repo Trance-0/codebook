@@ -1,0 +1,8 @@
+{   
+  "label": "2D Range Query",
+  "position": 11,
+  "link": {
+    "type": "generated-index",
+    "description": "2D range query algorithms"
+  }
+}

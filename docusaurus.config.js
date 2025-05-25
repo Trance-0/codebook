@@ -114,6 +114,10 @@ const config = {
                 to: '/blog',
               },
               {
+                label: 'Index',
+                href: 'https://index.trance-0.com',
+              },
+              {
                 label: 'GitHub',
                 href: 'https://github.com/facebook/docusaurus',
               },

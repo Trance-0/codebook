@@ -2,46 +2,37 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# Welcome
 
-Let's discover **Docusaurus in less than 5 minutes**.
+This is a site designed for me as a reference for some algorithms. It has nothing to do with soyorin in MyGO
 
-## Getting Started
+It is recommended to use the open-source version, but that will degrade my expectations as a clean tool for sharing algorithms and insights to computer science problems. WordPress is too heavy for this project. So I chose the Gitbook and am ready to leave it at any time.
 
-Get started by **creating a new site**.
+Jump right into some completed pages?
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+Here is the list of pages that have been finished.
 
-### What you'll need
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+- [x] [Sorting](./sorting)
 
-## Generate a new site
 
-Generate a new Docusaurus site using the **classic template**.
+- [x] [Searching](./searching)
 
-The classic template will automatically be added to your project after you run the command:
 
-```bash
-npm init docusaurus@latest my-website classic
-```
+- [x] [Greedy Algorithm](./greedy-algorithm)
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+- [x] [Sliding window](./sliding-window)
 
-## Start your site
 
-Run the development server:
+- [x] [Minimal spanning tree](./minimal-spanning-tree)
 
-```bash
-cd my-website
-npm run start
-```
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+- [x] [Shortest path](./shortest-path)
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+- [x] [Dynamic Programming](./dynamic-programming)
+
+
+- [ ] [Additional Data Structures](./additional-data-structures)
+

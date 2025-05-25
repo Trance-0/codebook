@@ -1,0 +1,8 @@
+{
+  "label": "Sorting",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Sorting algorithms"
+  }
+}
