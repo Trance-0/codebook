@@ -1,0 +1,87 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+
+# Merge Sort
+
+Merge sort is a divide-and-conquer algorithm that divides the input array into two halves, recursively sorts each half, and then merges the two sorted halves.
+
+## Time Complexity
+
+The time complexity of merge sort is $O(n \log n)$ in all cases.
+
+## Space Complexity
+
+The space complexity of merge sort is $O(n)$ in all cases.
+
+## Codes
+
+<Tabs>
+<TabItem value="Java" label="Java">
+```java
+private int[] MergeSort(int[] arr){
+    /* Sample merge sort algorithm
+     *
+     * @param arr An unsorted array, int
+     * @return a list of sorted array
+     */
+    if(arr.length<=1){
+        return arr;
+    }else{
+        int[] a = new int[(arr.length + 1)/2];
+    int[] b = new int[arr.length - a.length];
+    for (int i = 0; i < arr.length; i++)
+    {
+        if (i < a.length) {
+            a[i] = arr[i];
+        }
+        else {
+            b[i - a.length] = arr[i];
+        }
+    }
+        a=MergeSort(a);
+        b=MergeSort(b);
+        int j=0;
+        for(int i=0;i<arr.length;i++){
+            if( j<a.length && (i-j>=b.length||a[j]<b[i-j])){
+                arr[i]=a[j];
+                j++;
+            }else{
+                arr[i]=b[i-j];
+            }
+        }
+        return arr;
+    }
+}
+```
+</TabItem>
+<TabItem value="Python" label="Python">
+```python
+def merge_sort(arr) -> list:
+    """
+    Merge sort algorithm
+    :param arr: list of integers
+    :return: list of sorted integers
+    """
+    if len(arr) <= 1:
+        return arr
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+    while left and right:
+        if left[0] < right[0]:
+            arr.append(left.pop(0))
+        else:
+            arr.append(right.pop(0))
+    arr.extend(left)
+    arr.extend(right)
+    return arr
+```
+</TabItem>
+</Tabs>
+
+

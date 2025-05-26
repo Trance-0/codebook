@@ -1,0 +1,55 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Binary Search
+
+Binary search is a search algorithm that finds the first (`lower_bound`) or last (`upper_bound`) position of a target value within a sorted array.
+
+## Codes
+
+<Tabs>
+<TabItem value="Java" label="Java">
+```java
+public int BinarySearch(int[] nums, int target) {
+    int i=0;
+    int j=nums.length;
+    while (i<j){
+        if(nums[(i+j)/2]>target){
+            j=(i+j)/2;
+        }else if(nums[(i+j)/2]<target){
+            i=(i+j)/2+1;
+        }else{
+            return (i+j)/2;
+        }
+    }
+    return -1;
+}
+```
+</TabItem>
+<TabItem value="Python" label="Python">
+```python
+def binary_search(nums, target):
+    """
+    Binary search algorithm
+    :param nums: list of integers
+    :param target: target value
+    :return: index of the target value
+    """
+    i=0
+    j=len(nums)
+    while i<j:
+        if nums[(i+j)//2]>target:
+            j=(i+j)//2
+        elif nums[(i+j)//2]<target:
+            i=(i+j)//2+1
+        else:
+            return (i+j)//2
+    return -1
+```
+</TabItem>
+</Tabs>
+

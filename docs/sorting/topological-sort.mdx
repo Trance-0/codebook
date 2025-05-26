@@ -1,0 +1,61 @@
+---
+sidebar_position: 4
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Topological Sort
+
+Topological sort is a linear ordering of the vertices of a directed acyclic graph (DAG) such that for every directed edge uv from vertex u to vertex v, u comes before v in the ordering.
+
+## Codes
+
+<Tabs>
+<TabItem value="Java" label="Java">
+
+This is a sample code for topological sort using DFS on A [forward star graph](../additional-data-structures/forward-star).
+
+```java
+public LinkedList<Integer> topologicalSortDFS(ForwardStar E, int start, int Vsize) {
+    /**
+     * Topological sort using DFS
+     * @param E: ForwardStar
+     * @param start: start vertex
+     * @param Vsize: size of the vertex
+     * @return: list of sorted vertices
+     */
+    LinkedList<Integer> result = new LinkedList<Integer>();
+    Stack<Integer> stack = new Stack<Integer>();
+    stack.add(start);
+    boolean[] checked = new boolean[Vsize];
+    checked[start] = true;
+    while (!stack.isEmpty()) {
+        LinkedList<int[]> tempEdge = E.get(stack.peek());
+        boolean addnew = false;
+        for (int[] i : tempEdge) {
+            if (!checked[i[1]]) {
+                stack.add(i[1]);
+                checked[i[1]] = true;
+                addnew = true;
+                break;
+            }
+            if (!addnew) {
+                result.addFirst(stack.pop());
+            }
+        }
+    }
+    return result;
+}
+```
+</TabItem>
+<TabItem value="Python" label="Python">
+```python
+
+```
+</TabItem>
+</Tabs>
+
+## References
+
+[Topological Sorting on CS Academy](https://csacademy.com/lesson/topological_sorting)
