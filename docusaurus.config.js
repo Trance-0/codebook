@@ -51,20 +51,6 @@ const config = {
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/trance-0/codebook/tree/main/docs',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
-        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -99,7 +85,16 @@ const config = {
             position: 'left',
             label: 'Tutorial',
           },
-          {to: '/blog', label: 'Blog', position: 'left'},
+          {
+            href: 'https://www.trance-0.com',
+            label: 'Blog',
+            position: 'left',
+          },
+          {
+            href: 'https://index.trance-0.com',
+            label: 'Index page',
+            position: 'left',
+          },
           {
             href: 'https://github.com/trance-0/codebook',
             label: 'GitHub',
