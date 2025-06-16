@@ -13,26 +13,26 @@ Jump right into some completed pages?
 Here is the list of pages that have been finished.
 
 
-- [x] [Sorting](./sorting)
+- [x] [Sorting](./category/sorting)
 
 
-- [x] [Searching](./searching)
+- [x] [Searching](./category/searching)
 
 
-- [x] [Greedy Algorithm](./greedy-algorithm)
+- [x] [Greedy Algorithm](./category/greedy-algorithm)
 
 
-- [x] [Sliding window](./sliding-window)
+- [x] [Sliding window](./category/sliding-window)
 
 
-- [x] [Minimal spanning tree](./minimal-spanning-tree)
+- [x] [Minimal spanning tree](./category/minimal-spanning-tree)
 
 
-- [x] [Shortest path](./shortest-path)
+- [x] [Shortest path](./category/shortest-path)
 
 
-- [x] [Dynamic Programming](./dynamic-programming)
+- [x] [Dynamic Programming](./category/dynamic-programming)
 
 
-- [ ] [Additional Data Structures](./additional-data-structures)
+- [ ] [Additional Data Structures](./category/additional-data-structures)
 
