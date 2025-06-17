@@ -1,0 +1,184 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Sliding Window
+
+Here are some hint that triggers me to consider this algorithm
+
+Note: A subarray is a *contiguous non-empty sequence of elements within an array*.
+
+
+## Codes
+
+This should be the section that should be filled first; it follows my naming convention and some standard coding. It should have at least runnable Python code so that I can copy and paste efficiently.
+
+
+<Tabs>
+
+<TabItem value="Python" label="Python">
+
+```python
+def slidingWindow(self, nums: List[int], Callable: condition):
+    lo = 0
+    res = 0
+    for hi in range(len(nums)):
+        condition('add',nums[hi])
+        while condition('satisfied'):
+            condition('remove',nums[lo])
+            lo+=1
+        res += lo
+    return res
+```
+
+</TabItem>
+
+</Tabs> 
+
+## Description
+
+Let's denote the length of the array by $n$.
+
+What the sliding window algorithm does is that it maintains a window of elements that satisfies a certain condition. Then we can count the number of such windows or subarrays in total.
+
+Runtime: $O(n \times condition)$
+
+Memory: $O(n \times condition)$
+
+## Extensions
+
+Additional resource to consider and other possible algorithms that can be combined with it, with examples
+
+## Applications
+
+This should be a list of problems that use the algorithm.
+
+### Counting subarrays
+
+
+#### Problem 1 [Expected difficulty: 8]
+
+[count subarrays with score less than k](https://leetcode.com/problems/count-subarrays-with-score-less-than-k)
+
+<details>
+<summary>Intuition</summary>
+
+Use multiplication directly
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def countSubarrays(self, nums: List[int], k: int) -> int:
+        lo,res,n,cursum=0,0,len(nums),0
+        for hi in range(n):
+            cursum+=nums[hi]
+            while cursum*(hi-lo+1)>=k:
+                cursum-=nums[lo]
+                lo+=1
+            res+=hi-lo+1
+        return res
+```
+
+If you like struggling yourself, you may solve this via prefix array, and wonder if that might be simpler, but that's actually slower. (I tried that first since it was noticed as "Hard".)
+
+</details>
+
+#### Problem 2 [Expected difficulty: 10]
+
+[count subarrays with fixed bounds](https://leetcode.com/problems/count-subarrays-with-fixed-bounds)
+
+<details>
+<summary>Intuition</summary>
+
+Notice that any position with a number out of bounds will eliminate any choice of subarrays.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```cpp
+class Solution {
+public:
+    long long countSubarrays(vector<int>& nums, int minK, int maxK) {
+        int bp=-1,n=nums.size(),minI=-1,maxI=-1;
+        long long res=0;
+        for(int hi=0;hi<n;hi++){
+            if (nums[hi]<minK || nums[hi]>maxK){
+                bp=hi;
+                continue;
+            }
+            if (nums[hi]==minK) minI=hi;
+            if (nums[hi]==maxK) maxI=hi;
+            if (minI>bp && maxI>bp) res+=min(minI,maxI)-bp;
+            // cout<<lazylo<<" "<<lo<<" "<<hi<<":"<<minN<<" "<<maxN<<endl;
+        }
+        return res;
+    }
+};
+```
+
+</details>
+
+#### Problem 3 [Expected difficulty: 12]
+
+[count of interesting subarrays](https://leetcode.com/problems/count-of-interesting-subarrays)
+
+<details>
+<summary>Intuition</summary>
+
+We only care about when `cnt%modulus==k` , so we can create buckets to store those remainder terms on each visit of each number. 
+
+Consider the following cases, where 1 denotes that `nums[i]%modulus==k`  and when the modulus is 3. Here, each entry of the table represents the number of arrays ending at index of the column `j` with modulus `k`.
+
+|k|1|0|1|1|1|0|
+|---|---|---|---|---|---|---|
+|2|0|0|1|2|1|1|
+|0|1|1|2|1|2|2|
+|1|0|1|0|1|2|3|
+
+
+Notice that on each index, we add the number  k by one and when `nums[i]%modulus==k` We shift the entire column up by one.
+
+And the number we are consistently checking is the sum row.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```cpp
+class Solution {
+public:
+    long long countInterestingSubarrays(vector<int>& nums, int modulo, int k) {
+        int n=nums.size(),cntb=0;
+        long long res=0;
+        unordered_map<int,int>b;
+        for (int hi=0;hi<n;hi++){
+            b[cntb]++;
+            // shift adder
+            if(nums[hi]%modulo==k) cntb=(cntb+modulo-1)%modulo;
+            res+=b[(cntb+k)%modulo];
+        }
+        return res;
+    }
+};
+```
+
+</details>
+
+
+## References
+
+This should be a list of references that I used to write the algorithm.
+
+Some examples:
+
+- [cp-algorithms](https://cp-algorithms.com/)
