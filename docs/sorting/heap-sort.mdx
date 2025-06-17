@@ -1,0 +1,62 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Heap Sort
+
+Heap is a data structure that is a complete binary tree that satisfies the heap property.
+
+Usually, we use tree to represent the heap.
+
+The parent node is always greater (or smaller) than the child node.
+
+In python, min heap is implemented by `heapq` library.
+
+In C++, we can use `priority_queue` to implement the heap.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+import heapq
+
+heap = []
+heapq.heappush(heap, 1)
+heapq.heappush(heap, 2)
+heapq.heappush(heap, 3)
+
+print(heapq.heappop(heap))
+``` 
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <queue>
+
+priority_queue<int> heap;
+
+heap.push(1);
+heap.push(2);
+heap.push(3);
+
+cout << heap.top() << endl;
+```
+
+</TabItem>
+</Tabs>
+
+# Description
+
+Time complexity: $O(n \log n)$
+
+The heap structure can be maintained by AVL tree.
+
+Space complexity: $O(n)$
+

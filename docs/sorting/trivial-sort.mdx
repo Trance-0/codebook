@@ -1,0 +1,131 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Trivial Sort
+
+Sorting is a fundamental problem in computer science. It relates to many other problems. (useless nonsense)
+
+## Description
+
+Since the idea is so stupid, we will not write  code for it. In this topic page, we only consider the sorting problem in general.
+
+### Bubble Sort
+
+One trivial sort is bubble sort. 
+The key is to swap the adjacent elements if they are in the wrong order.
+
+Time complexity: $O(n^2)$
+
+Space complexity: $O(1)$ (no extra space is used)
+
+### Selection Sort
+
+The key is to find the minimum element in the unsorted part and swap it with the first element of the unsorted part.
+
+Time complexity: $O(n^2)$
+
+Space complexity: $O(1)$ (no extra space is used)
+
+### Counting Sort
+
+This part is interesting because it is not a comparison-based sort.
+
+The key is to count the number of each element and then place them in the correct position.
+
+Time complexity: $O(n+k)$
+
+Space complexity: $O(n+k)$ (no extra space is used)
+
+#### Radix Sort
+
+Radix sort is a non-comparison sort.
+
+It is a generalization of counting sort.
+
+It is a stable sort.
+
+It is a in-place sort.
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def radix_sort(arr):
+    max_digit = len(str(max(arr)))
+    for digit in range(max_digit):
+        buckets = [[] for _ in range(10)]
+        for num in arr:
+            buckets[num // (10 ** digit) % 10].append(num)
+        arr = [num for bucket in buckets for num in bucket]
+    return arr
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+#include <queue>
+
+void radix_sort(vector<int>& arr) {
+    int max_digit = 0;
+    for (int num : arr) {
+        max_digit = max(max_digit, (int)log10(num) + 1);
+    }
+    for (int digit = 0; digit < max_digit; digit++) {
+        vector<queue<int>> buckets(10);
+        for (int num : arr) {
+            buckets[num / (10 ** digit) % 10].push(num);
+        }
+        arr.clear();
+        for (int i = 0; i < 10; i++) {
+            while (!buckets[i].empty()) {
+                arr.push_back(buckets[i].front());
+                buckets[i].pop();
+            }
+        }
+    }
+}
+```
+</TabItem>
+</Tabs>
+
+### Shell Sort
+
+The key is to sort the elements that are far apart first, and then sort the elements that are close together.
+
+This is my favorite sort algorithm.
+
+Time complexity: $O(n \log n)$ (ideal, depends on the gap sequence)
+
+The ideal gap sequence found so far experimentally is $[1,4,10,23,57,132,301,701]$
+
+Space complexity: $O(1)$ (no extra space is used)
+
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def shell_sort(arr,gap_sequence):
+    n = len(arr)
+    for gap in gap_sequence:
+        for i in range(gap, n):
+            temp = arr[i]
+            j = i
+            while j >= gap and arr[j - gap] > temp:
+                arr[j] = arr[j - gap]
+                j -= gap
+            arr[j] = temp
+    return arr
+```
+
+</TabItem>
+</Tabs>
+
+### Bucket Sort
