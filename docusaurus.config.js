@@ -16,7 +16,7 @@ dotenv.config();
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Algorithm workbook',
-  tagline: 'A personal applet for algorithm learning',
+  tagline: 'A personal reference for algorithm learning',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
@@ -122,7 +122,7 @@ const config = {
             items: [
               {
                 label: 'Blog',
-                to: '/blog',
+                href: 'https://www.trance-0.com',
               },
               {
                 label: 'Index',

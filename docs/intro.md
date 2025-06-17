@@ -19,7 +19,7 @@ Here is the list of pages that have been finished.
 - [x] [Searching](./category/searching)
 
 
-- [x] [Greedy Algorithm](./category/greedy)
+- [x] [Greedy Algorithms](./category/greedy-algorithms)
 
 - [x] [Minimal spanning tree](./category/minimal-spanning-tree)
 
