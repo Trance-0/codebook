@@ -89,6 +89,11 @@ const config = {
             label: 'Tutorial',
           },
           {
+            to: '/about',
+            label: 'About',
+            position: 'left',
+          },
+          {
             href: 'https://www.trance-0.com',
             label: 'Blog',
             position: 'left',
