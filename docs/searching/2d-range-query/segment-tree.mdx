@@ -1,0 +1,323 @@
+---
+sidebar_position: 4
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Segment Tree
+
+The segment tree is a data structure that can be used to solve range query problems.
+
+two operations are supported:
+
+- 'construct' to build the tree
+- 'query' to query the tree with set of properties
+
+one hidden function to maintain the tree is needed.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+class ListSegTree:
+    # this is leetcode official version of segment tree modified
+    # to keep the max value in the segment queried
+    def __init__ (self,vals):
+        self.n = len(vals)
+        # get normalized tree size, keep tree filled balanced
+        treeSize = 2 << (self.n-1).bit_length()
+        # store the max value in the segment created
+        # index 0 is not used since it don't satisfied 2n\neq n 
+        # in index 1, it represent the tree max node value in range [0,n).
+        # in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
+        self.seg = [0] * treeSize
+        # costruct tree in query range
+        self._construct(vals, 1, 0, self.n-1)
+    
+    def _maintain(self, segIdx):
+        # maintain the node on segment tree at segIdx
+        # TODO: implement this your self
+        # self.seg[segIdx]=max(self.seg[segIdx*2],self.seg[segIdx*2+1])
+
+    def _construct(self, vals, segIdx, l, r):
+        # construct the segment tree, at segIdx, represented range is [l,r] inclusive
+        # base case, if reached the leaf node
+        if l==r:
+            self.seg[segIdx]=vals[l]
+            return
+        m=(l+r)//2
+        self._construct(vals,segIdx*2, l, m)
+        self._construct(vals,segIdx*2+1, m+1, r)
+        self._maintain(segIdx)
+
+    def query(self, segIdx, l, r, q):
+        # return the first index of val greater than q and maintain the tree
+        if self.seg[segIdx]<q:
+            # no value found
+            # TODO: implement this your self
+            # return -1
+        if l==r:
+            # return the root index and mark the value as invalid choice, in this case -1
+            # TODO: implement this your self
+            # self.seg[segIdx] = -1
+            return l
+        m = (l+r)//2
+        # find left part first
+        ret = self.query(segIdx*2, l, m, q)
+        if ret==-1:
+            ret=self.query(segIdx*2+1, m+1, r, q)
+        self._maintain(segIdx)
+        return ret
+
+</TabItem>
+<TabItem value="C++" label="C++">
+
+```cpp
+class ListSegTree{
+    private:
+    int n;
+    vector<int> seg;
+
+    void _maintain(int segIdx){
+        // maintain the node on segment tree at segIdx
+        // TODO: implement this your self
+        // seg[segIdx]=max(seg[segIdx*2],seg[segIdx*2+1]);
+    }
+    void _construct(vector<int>& vals, int segIdx, int l, int r){
+        // construct the segment tree, at segIdx, represented range is [l,r] inclusive
+        // base case, if reached the leaf node
+        if(l==r){
+            seg[segIdx]=vals[l];
+            return;
+        }
+        int m=(l+r)/2;
+        _construct(vals,segIdx*2,l,m);
+        _construct(vals,segIdx*2+1,m+1,r);
+        _maintain(segIdx);
+    }
+    public:
+    // this is leetcode official version of segment tree modified
+    // to keep the max value in the segment queried
+    ListSegTree(vector<int>& vals){
+        n=vals.size();
+        // get normalized tree size, keep tree filled balanced
+        int treeSize=2<<(n-1).bit_length();
+        // store the max value in the segment created
+        // index 0 is not used since it don't satisfied 2n\neq n 
+        // in index 1, it represent the tree max node value in range [0,n).
+        // in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
+        seg=vector<int>(treeSize,0);
+        // costruct tree in query range
+        _construct(vals,1,0,n-1);
+    }
+    
+    int query(int segIdx, int l, int r, int q){
+        // return the first index of val greater than q and maintain the tree
+        if(seg[segIdx]<q){
+            // no value found
+            // TODO: implement this your self
+            // return -1;
+        }
+        if(l==r){
+            // return the root index and mark the value as invalid choice, in this case -1
+            // TODO: implement this your self
+            // seg[segIdx] = -1
+            return l;
+        }
+        int m=(l+r)/2;
+        int ret=query(segIdx*2,l,m,q);
+        if(ret==-1){
+            ret=query(segIdx*2+1,m+1,r,q);
+        }
+        _maintain(segIdx);
+        return ret;
+    }
+};
+```
+
+</TabItem>
+
+</Tabs>
+
+## Description
+
+### Runtime analysis
+
+'construct' is $O(n)$
+'query' is $O(\log n)$
+
+## Applications
+
+### Leetcode 3479
+
+- [Leetcode 3479](https://leetcode.com/problems/minimum-range-queries-in-an-uneven-array/)
+
+
+<details>
+<summary>Intuition</summary>
+The key insights here is to reduce the time of querying and updating the capacity of the baskets with lowest index.
+
+We recode the node value with maximum capacity of the baskets in the range.
+
+To ensure the minimum index is selected, we query the left part first. If the left part is not valid, we query the right part.
+</details>
+
+<details>
+<summary>Solution</summary>
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+class ListSegTree:
+    # this is leetcode official version of segment tree modified
+    # to keep the max value in the segment queried
+    def __init__ (self,vals):
+        self.n = len(vals)
+        # get normalized tree size, keep tree filled balanced
+        treeSize = 2 << (self.n-1).bit_length()
+        # store the max value in the segment created
+        # index 0 is not used since it don't satisfied 2n\neq n 
+        # in index 1, it represent the tree max node value in range [0,n).
+        # in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
+        self.seg = [0] * treeSize
+        # costruct tree in query range
+        self._construct(vals, 1, 0, self.n-1)
+    
+    def _maintain(self, segIdx):
+        # maintain the node on segment tree at segIdx
+        self.seg[segIdx]=max(self.seg[segIdx*2],self.seg[segIdx*2+1])
+
+    def _construct(self, vals, segIdx, l, r):
+        # construct the segment tree, at segIdx, represented range is [l,r] inclusive
+        # base case, if reached the leaf node
+        if l==r:
+            self.seg[segIdx]=vals[l]
+            return
+        m=(l+r)//2
+        self._construct(vals,segIdx*2, l, m)
+        self._construct(vals,segIdx*2+1, m+1, r)
+        self._maintain(segIdx)
+
+    def query(self, segIdx, l, r, q):
+        # return the first index of val greater than q and maintain the tree
+        if self.seg[segIdx]<q:
+            # no value found
+            return -1
+        if l==r:
+            # return the root index and mark the value as invalid choice, in this case -1
+            self.seg[segIdx] = -1
+            return l
+        m = (l+r)//2
+        # find left part first
+        ret = self.query(segIdx*2, l, m, q)
+        if ret==-1:
+            ret=self.query(segIdx*2+1, m+1, r, q)
+        self._maintain(segIdx)
+        return ret
+
+class Solution:
+    def numOfUnplacedFruits(self, fruits: List[int], baskets: List[int]) -> int:
+        n=len(fruits)
+        if n==0:
+            return 0
+        seg=ListSegTree(baskets)
+        res=0
+        for i in fruits:
+            if seg.query(1,0,n-1,i)==-1:
+                res+=1
+        return res
+```
+
+</TabItem>
+
+</Tabs>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+class ListSegTree{
+    private:
+    // this is leetcode official version of segment tree modified
+    int n;
+    vector<int> seg;
+    
+    void _maintain(int segIdx){
+        // maintain the node on segment tree at segIdx
+        seg[segIdx]=max(seg[segIdx*2],seg[segIdx*2+1]);
+    }
+    void _construct(vector<int>& vals, int segIdx, int l, int r){ 
+        // construct the segment tree, at segIdx, represented range is [l,r] inclusive
+        // base case, if reached the leaf node
+        if(l==r){
+            seg[segIdx]=vals[l];
+            return;
+        }
+        int m=(l+r)/2;
+        _construct(vals,segIdx*2,l,m);
+        _construct(vals,segIdx*2+1,m+1,r);
+        _maintain(segIdx);
+    }
+    public:
+    // to keep the max value in the segment queried
+    ListSegTree(vector<int>& vals){
+        n=vals.size();
+        // get normalized tree size, keep tree filled balanced
+        int treeSize = 1;
+        while (treeSize < n) treeSize <<= 1;
+        treeSize <<= 1;
+        // store the max value in the segment created
+        // index 0 is not used since it don't satisfied 2n\neq n 
+        // in index 1, it represent the tree max node value in range [0,n).
+        // in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
+        seg=vector<int>(treeSize,0);
+        // costruct tree in query range
+        _construct(vals,1,0,n-1);
+    }   
+    int query(int segIdx, int l, int r, int q){
+        // return the first index of val greater than q and maintain the tree
+        if(seg[segIdx]<q){
+            // no value found
+            return -1;
+        }
+        if(l==r){
+            // return the root index and mark the value as invalid choice, in this case -1
+            seg[segIdx] = -1;
+            return l;
+        }
+        int m=(l+r)/2;
+        int ret=query(segIdx*2,l,m,q);
+        if(ret==-1){
+            ret=query(segIdx*2+1,m+1,r,q);
+        }
+        _maintain(segIdx);
+        return ret;
+    }
+};
+class Solution{
+    public:
+    int numOfUnplacedFruits(vector<int>& fruits, vector<int>& baskets){
+        int n=fruits.size();
+        if(n==0){
+            return 0;
+        }
+        ListSegTree seg=ListSegTree(baskets);
+        int res=0;
+        for(int i=0;i<n;i++){
+            if(seg.query(1,0,n-1,fruits[i])==-1){
+                res++;
+            }
+        }
+        return res;
+    }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+</details>

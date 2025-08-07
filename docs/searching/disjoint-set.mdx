@@ -53,6 +53,10 @@ private int findParent(int i){
 </TabItem>
 <TabItem value="Python" label="Python">
 ```python
+def findParent(i):
+    if parentNode[i]!=i:
+        parentNode[i]=findParent(parentNode[i])
+    return parentNode[i]
 ```
 </TabItem>
 </Tabs>
