@@ -1,0 +1,66 @@
+---
+sidebar_position: 2
+---
+
+# Two Pointer
+
+This is a greedy algorithm that uses two pointers to solve a problem.
+
+Usually, we are given a array and we need to find a maximum or minimum subarray.
+
+The problem can usually be solved in $O(n)$ time, and can be separated into several subproblems. And the supproblem usually partially solved the subproblem.
+
+## Codes
+
+<Tabs>
+<TabItem value="C++" label="C++">
+
+```cpp
+
+```
+
+</TabItem>
+</Tabs>
+
+## Applications
+
+### Find maximum water
+
+#### Leetcode 11
+
+[link to problem](https://leetcode.com/problems/container-with-most-water/)
+
+<details>
+<summary>Intuition</summary>
+
+Note that using two pointers, we are guaranteed to find the max h[l], h[r] when d=r-l
+
+By the greedy algorithm, it is easy to show that for all $i<l$, $h[i]<h[r]$ and for all $i>r$, $h[i]<h[l]$.
+
+So it is always safe to move the pointer that is smaller.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```cpp
+class Solution {
+public:
+    int maxArea(vector<int>& height) {
+        // the key is that, using two pointer, we are guaranteed to find the max h[l], h[r] when d=r-l
+        int res=0;
+        for(int l=0,r=height.size()-1;l<r;){
+            res=max(res,min(height[l],height[r])*(r-l));
+            if(height[l]<height[r]){
+                l++;
+            }else{
+                r--;
+            }
+        }
+        return res;
+    }
+};
+```
+
+</details>
