@@ -9,6 +9,8 @@ import TabItem from '@theme/TabItem';
 
 The segment tree is a data structure that can be used to solve range query problems.
 
+- Query: returns the maximum value (or other local aggregates) in the range
+
 Range aggregate (sum/min/max), point/range updates; can report intervals covering a point
 
 two operations are supported:
@@ -21,6 +23,79 @@ one hidden function to maintain the tree is needed.
 ## Codes
 
 <Tabs>
+<TabItem value="Python-classfree" label="Python-classfree">
+
+This is the class-free version of the segment tree implemented by myself, you can only use the functions you need to construct the tree and query the tree.
+
+```python
+# A segment tree is essentially a list
+def create_by_values(seg: list[Any], vals: list[Any], l: int, r: int, segIdx: int=1):
+    """
+    Maintain the node on segment tree at segIdx recursively, l,r inclusive.
+    :param seg: the segment tree
+    :param vals: the original list
+    :param l: the left index of the range
+    :param r: the right index of the range
+    :param segIdx: the index of the node to maintain
+    """
+    if l==r:
+        seg[segIdx]=vals[l]
+        return
+    m=(l+r)//2
+    # maintain the left and right child
+    create_by_values(seg, vals, l, m, segIdx*2)
+    create_by_values(seg, vals, m+1, r, segIdx*2+1)
+    # this keeps the property you want to store in the segment tree
+    maintain(seg, segIdx)
+
+def maintain(seg: list[Any], segIdx: int):
+    """
+    Maintain the node on segment tree at segIdx
+    :param seg: the segment tree
+    :param segIdx: the index of the node to maintain
+    """
+    # EXAMPLE: the max value in the range [l,r]
+    # seg[segIdx]=max(seg[segIdx*2],seg[segIdx*2+1])
+    # EXAMPLE: the sum of the values in the range [l,r]
+    seg[segIdx]=seg[segIdx*2]+seg[segIdx*2+1]
+
+def construct(vals: list[Any]) -> list[Any]:
+    n = len(vals)
+    # get normalized tree size, keep tree filled balanced
+    # tree size is at most 2n to the original size of the list
+    treeSize = 2 << (n-1).bit_length()
+    seg = [0] * treeSize
+    # costruct tree in query range
+    create_by_values(seg, vals, 1, 0, n-1)
+    return seg
+
+def query(seg: list[int], l: int, r: int, q: int, segIdx: int=1) -> Any:
+    """
+    Query the segment tree at segIdx recursively
+    :param seg: the segment tree
+    :param segIdx: the index of the node to query
+    :param l: the left index of the range
+    :param r: the right index of the range
+    :param q: the query value you need to pass to the query function
+    :return: self defined return value
+    """
+    # EXAMPLE: query for find minimum index of value greater than q
+    # if seg[segIdx]<q:
+    #     # no value found
+    #     return -1
+    # if l==r:
+    #     seg[segIdx] = -1
+    #     # return the root index and mark the value as invalid choice, in this case -1
+    #     return l
+    m=(l+r)//2
+    ret = query(seg, l, m, q, segIdx*2)
+    if ret==-1:
+        ret=query(seg, m+1, r, q, segIdx*2+1)
+    # if any value is modified, we need to maintain the tree
+    maintain(seg, segIdx)
+    return ret
+```
+</TabItem>
 <TabItem value="Python" label="Python">
 
 ```python
@@ -158,6 +233,7 @@ class ListSegTree{
 
 - [Leetcode 3479](https://leetcode.com/problems/minimum-range-queries-in-an-uneven-array/)
 
+Now called fruit baskets III.
 
 <details>
 <summary>Intuition</summary>

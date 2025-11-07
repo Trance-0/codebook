@@ -6,6 +6,8 @@ sidebar_position: 2
 
 Range tree is an orthogonal range reporting/counting (rectangles)
 
+- Query: returns the number of points in the range
+
 Complexity:
 
 2D: $O(log^2 n + m)$, with fractional cascading $O(log n + m)$; build $O(n log n)$; query $O(log^{k-1} n + m)$

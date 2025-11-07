@@ -9,6 +9,8 @@ import TabItem from '@theme/TabItem';
 
 Binary search is a search algorithm that finds the first (`lower_bound`) or last (`upper_bound`) position of a target value within a sorted array.
 
+It is the most common used search algorithm in computer science, if you find any $O(n\log n)$ algorithm, it is likely to be a binary search algorithm. You should always consider using binary search first especially when there is "test and trial" pattern in the problem and the required solution is a single number.
+
 ## Codes
 
 <Tabs>
@@ -53,3 +55,54 @@ def binary_search(nums, target):
 </TabItem>
 </Tabs>
 
+## Applications
+
+### Leetcode 2528
+
+- [Leetcode 2528](https://leetcode.com/problems/maximize-the-minimum-powered-city)
+
+It takes a while to realize that binary search is all I need. I tried to use segment tree to solve this problem, but it is too complex to implement and the time complexity is not guaranteed to be $O(n\log n)$ in the insertion of queries.
+
+<details>
+<summary>Intuition</summary>
+
+I see I only need to return the minimum power of the city that can be powered by the given cities.
+
+Each test solution can be verified using a single iteration over the cities.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def maxPower(self, stations: List[int], r: int, k: int) -> int:
+        def canPower(power: int) -> bool:
+            # stored the power range of the latest power station constructed
+            # formated as (expiration (inclusive), powersupply)
+            power_range=[]
+            additional_power=0
+            for i,e in enumerate(stations):
+                # at most one entry is popped each time
+                if power_range and power_range[0][0]<i:
+                    additional_power -= power_range.pop(0)[1]
+                if e + additional_power < power:
+                    required_power = power - e - additional_power
+                    k -= required_power
+                    power_range.append((i+2*(r+1)-1, required_power))
+                    if k < 0:
+                        return False
+                    additional_power += required_power
+            return True
+        lo, hi = min(stations), max(stations)+k+1
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if canPower(mid):
+                hi = mid
+            else:
+                lo = mid + 1
+        return lo
+```
+
+</details>
