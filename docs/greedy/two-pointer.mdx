@@ -2,6 +2,9 @@
 sidebar_position: 2
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Two Pointer
 
 This is a greedy algorithm that uses two pointers to solve a problem.
@@ -16,7 +19,12 @@ The problem can usually be solved in $O(n)$ time, and can be separated into seve
 <TabItem value="C++" label="C++">
 
 ```cpp
-
+for(int l=0,r=0;l<n;l++){
+    while(r<n && condition(l,r)){
+        r++;
+    }
+    // do something with the subarray [l,r)
+}
 ```
 
 </TabItem>
@@ -35,7 +43,7 @@ The problem can usually be solved in $O(n)$ time, and can be separated into seve
 
 Note that using two pointers, we are guaranteed to find the max h[l], h[r] when d=r-l
 
-By the greedy algorithm, it is easy to show that for all $i<l$, $h[i]<h[r]$ and for all $i>r$, $h[i]<h[l]$.
+By the greedy algorithm, it is easy to show that for all `i<l`, `h[i]<h[r]` and for all `i>r`, `h[i]<h[l]`.
 
 So it is always safe to move the pointer that is smaller.
 

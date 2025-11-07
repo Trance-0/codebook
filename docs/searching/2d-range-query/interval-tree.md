@@ -2,6 +2,9 @@
 sidebar_position: 3
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Interval Tree
 
 ## Description
@@ -113,7 +116,7 @@ def isOverlapping(i1: Interval, i2: Interval) -> bool:
 
 def overlapSearch(root: Node, i: Interval) -> Interval:
     """
-    Search for the interval in the interval tree
+    Search for the interval that overlaps with the query interval
     :param root: the root of the interval tree
     :param i: the interval to search for
     :return: the node that overlaps with the interval, otherwise None
@@ -146,6 +149,28 @@ def inorder(root: Node):
     print("[" + str(root.i.low) + ", " + str(root.i.high) + "]" + " max = " + str(root.max))
     inorder(root.right)
 
+def isContaining(i1: Interval, i2: Interval) -> bool:
+    """
+    Check if i2 is contained by i1
+    :param i1: the first interval
+    :param i2: the second interval
+    :return: True if i2 is contained by i1, otherwise False
+    """
+    if i1.low <= i2.low and i1.high >= i2.high:
+        return True
+    return False
+
+def containSearch(root: Node, i: Interval) -> Interval:
+    """
+    Search for the interval that containing the query interval
+    :param root: the root of the interval tree
+    :param i: the interval to search for
+    :return: the interval that containing the query interval, otherwise None
+    """
+    if root is None:
+        return None
+    if isContaining(root.i, i) is True:
+        return root.i
 ```
 </TabItem>
 </Tabs>
