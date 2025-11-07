@@ -1,0 +1,69 @@
+---
+sidebar_position: 2
+---
+
+# Double array dynamic programming
+
+The double array dynamic programming is a dynamic programming algorithm that uses two arrays to store the intermediate results.
+
+A common example is the robber house problem. You can always see some "robber" who is not willing to rob two adjacent houses or some other strange conditions. Then you need to store the optimal solution for both actions, rob and not rob.
+
+In such cases, using two arrays to store the intermediate results is a good idea.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+```python
+def robber(nums: List[int]) -> int:
+    n=len(nums)
+    if n==0:
+        return 0
+    if n==1:
+        return nums[0]
+    dp=[0]*n
+    dp[0]=nums[0]
+    dp[1]=max(nums[0],nums[1])
+    for i in range(2,n):
+        dp[i]=max(dp[i-1],dp[i-2]+nums[i])
+    return dp[n-1]
+```
+</TabItem>
+</Tabs>
+
+## Applications
+
+### Leetcode 3186
+
+- [Leetcode 3186](https://leetcode.com/problems/maximum-total-damage-with-spell-casting)
+
+<details>
+<summary>Intuition</summary>
+
+The key idea is to use two arrays to store the intermediate results. We can use counter to compress the total possible states of the spells and use bisect to find the index of the spell that is compatible with the current spell.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def maximumTotalDamage(self, power: List[int]) -> int:
+        # 2dp
+        pc=Counter(power)
+        sel=sorted(list(pc.keys()))
+        dp=[[k*pc[k],0] for k in sel]
+        n=len(sel)
+        for i in range(1,n):
+            # find the index of the spell that is compatible with the current spell
+            loi=bisect.bisect_left(sel,sel[i]-2)-1
+            if(sel[loi]<sel[i]-2): 
+                # if the compatible spell is found, add the damage of the compatible spell to the current spell
+                dp[i][0]+=max(dp[loi])
+            # add the damage of the previous spell to the current spell
+            dp[i][1]+=max(dp[i-1])
+        return max(dp[-1])
+```
+
+</details>

@@ -78,11 +78,12 @@ Each test solution can be verified using a single iteration over the cities.
 ```python
 class Solution:
     def maxPower(self, stations: List[int], r: int, k: int) -> int:
-        def canPower(power: int) -> bool:
+        def canPower(power: int,k: int) -> bool:
             # stored the power range of the latest power station constructed
             # formated as (expiration (inclusive), powersupply)
             power_range=[]
             additional_power=0
+            quota=0
             for i,e in enumerate(stations):
                 # at most one entry is popped each time
                 if power_range and power_range[0][0]<i:
@@ -95,10 +96,21 @@ class Solution:
                         return False
                     additional_power += required_power
             return True
+        # first updated the true power of the cities
+        n=len(stations)
+        cur_power=sum(stations[:r+1])
+        true_power=[0]*n
+        for i in range(n):
+            true_power[i]=cur_power
+            if i-r-1>=0:
+                cur_power -= stations[i-r-1]
+            if i+r<n:
+                cur_power += stations[i+r]
+        power=true_power
         lo, hi = min(stations), max(stations)+k+1
         while lo < hi:
             mid = (lo + hi) // 2
-            if canPower(mid):
+            if canPower(mid,k):
                 hi = mid
             else:
                 lo = mid + 1

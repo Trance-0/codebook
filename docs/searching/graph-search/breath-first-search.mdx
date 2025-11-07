@@ -1,0 +1,99 @@
+---
+sidebar_position: 1
+---
+
+# Breath First Search
+
+The breath first search is a graph search algorithm that explores the graph level by level.
+
+It is especially useful when you are required to visit all the nodes in the graph or grid.
+
+## Codes
+
+Here we use grid search as an example.
+
+<Tabs>
+<TabItem value="Python" label="Python">
+```python
+def bfs(mp):
+    ud=[]
+    d=[-1,0,1,0,-1]
+    for i in range(m):
+        for j in range(n):
+            if (i,j) in mp:
+                ud.append((i,j))
+    while len(ud)>0:
+        # print(ud)
+        a,b=ud.pop(0)
+        for i in range(4):
+            na,nb=a+d[i],b+d[i+1]
+            # print(na,nb)
+            if na>=0 and na<m and nb>=0 and nb<n:
+                # print(h[na][nb]>=h[a][b])
+                if h[na][nb]>=h[a][b] and (na,nb) not in mp:
+                    ud.append((na,nb))
+                    mp.add((na,nb))
+```
+</TabItem>
+</Tabs>
+
+## Applications
+
+### Leetcode 417
+
+- [Leetcode 417](https://leetcode.com/problems/pacific-atlantic-water-flow)
+
+<details>
+<summary>Intuition</summary>
+
+The key idea is to use breath first search to find the nodes that can flow to the pacific and atlantic ocean.
+
+We can use two breath first search to find the nodes that can flow to the pacific and atlantic ocean respectively.
+
+Then the answer is the intersection of the two sets of nodes.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def pacificAtlantic(self, h: List[List[int]]) -> List[List[int]]:
+        m,n=len(h),len(h[0])
+        p,a=set(),set()
+        for i in range(m):
+            p.add((i,0))
+            a.add((i,n-1))
+        for i in range(n):
+            p.add((0,i))
+            a.add((m-1,i))
+        def bfs(mp):
+            ud=[]
+            d=[-1,0,1,0,-1]
+            for i in range(m):
+                for j in range(n):
+                    if (i,j) in mp:
+                        ud.append((i,j))
+            while len(ud)>0:
+                # print(ud)
+                a,b=ud.pop(0)
+                for i in range(4):
+                    na,nb=a+d[i],b+d[i+1]
+                    # print(na,nb)
+                    if na>=0 and na<m and nb>=0 and nb<n:
+                        # print(h[na][nb]>=h[a][b])
+                        if h[na][nb]>=h[a][b] and (na,nb) not in mp:
+                            ud.append((na,nb))
+                            mp.add((na,nb))
+        res=[]
+        bfs(a)
+        bfs(p)
+        # print(a,p)
+        for i in range(m):
+            for j in range(n):
+                if (i,j) in p and (i,j) in a:
+                    res.append([i,j])
+        return res
+```
+</details>
