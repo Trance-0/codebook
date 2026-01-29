@@ -1,0 +1,106 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Dijkstra's Algorithm
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+import heapq
+
+def dijk(s,e,adj,inf=10**9):
+    # n=len(adj)
+    pq=[(0,s)]
+    d=[0]+[inf]*(n-1)
+    while pq:
+        # current node and current distance
+        cd,c=heappop(pq)
+        # remove stale edge updates
+        if cd>d[c]:
+            continue
+        for nx,nw in adj[c]:
+            # update better edges
+            if d[nx]<=nw+cd:
+                continue
+            d[nx]=nw+cd
+            # debug
+            # print(nx,nw+cd)
+            heappush(pq,(nw+cd,nx))
+    # return final weight
+    return d[e]
+```
+</TabItem>
+</Tabs>
+
+## Description
+
+Dijkstra's algorithm is a greedy algorithm used to find the shortest path from a starting node to a target node in a weighted graph with non-negative edge weights. 
+
+It works by iteratively selecting the node with the smallest known distance from the start node, 
+
+updating the distances to its neighbors, 
+
+and repeating this process until the target node is reached or all reachable nodes have been processed.
+
+### Run Time Analysis
+
+The time complexity of Dijkstra's algorithm using a priority queue (min-heap) is $O((V + E) log V)$, where $V$ is the number of vertices and $E$ is the number of edges in the graph. This is because each vertex is added to the priority queue once, and each edge is processed once.
+
+The space complexity is $O(V)$ due to the storage of the distance array and the priority queue.
+
+### Applications
+
+#### LeetCode 3650 [Expected difficulty: 8]
+
+https://leetcode.com/problems/minimum-cost-path-with-edge-reversals/description
+
+<details>
+<summary>Intuition</summary>
+Simple graph construction, and imagine the reverse path as edge with double cost. Then run dijkstra to find the minimum cost path.
+
+Every edge in the shortest path have only one edge flip, you may prove this by contradiction. So you don't need to worry about double switch on the same edge at all.
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def minCost(self, n: int, edges: List[List[int]]) -> int:
+        adj=collections.defaultdict(list)
+        # no going back and traverse is equivalent to dijk
+        for a,b,w in edges:
+            adj[a].append((b,w))
+            adj[b].append((a,w*2))
+        inf=10**9
+        def dijk(s,e,adj,inf=10**9):
+            # n=len(adj)
+            pq=[(0,s)]
+            d=[0]+[inf]*(n-1)
+            while pq:
+                # current node and current distance
+                cd,c=heappop(pq)
+                # remove stale edge updates
+                if cd>d[c]:
+                    continue
+                for nx,nw in adj[c]:
+                    # update better edges
+                    if d[nx]<=nw+cd:
+                        continue
+                    d[nx]=nw+cd
+                    # debug
+                    # print(nx,nw+cd)
+                    heappush(pq,(nw+cd,nx))
+            # return final weight
+            return d[e]
+        res=dijk(0,n-1,adj,inf)
+        return res if res!=inf else -1
+```
+</details>

@@ -1,0 +1,98 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Floyd's Algorithm
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python 
+
+def floydWarshall(edges,n,inf:int=10**9,is_bidirectional:bool=False):
+    # return minDistance of all 
+    minD=[[0 if i==j else inf for i in range(n)] for j in range(n)]
+    for a,b,w in edges:
+        minD[a][b]=min(minD[a][b],w)
+        if is_bidirectional: minD[b][a]=min(minD[a][b],w)
+    for k in range(n):
+        for a in range(n):
+            if a==k: continue
+            for b in range(n):
+                if a==b or b==k: continue
+                minD[a][b]=min(minD[a][b],minD[a][k]+minD[k][b])
+    return minD
+```
+</TabItem>
+</Tabs>
+
+## Description
+
+Floyd's algorithm, also known as the Floyd-Warshall algorithm, is a dynamic programming algorithm used to find the shortest paths between all pairs of nodes in a weighted graph. It can handle graphs with negative edge weights but no negative cycles.
+
+The algorithm works by iteratively considering each node as an intermediate point and updating the shortest paths between all pairs of nodes based on whether passing through the intermediate node offers a shorter path.
+
+### Run Time Analysis
+
+The time complexity of Floyd's algorithm is $O(V^3)$, where $V$ is the number of vertices in the graph. This is due to the three nested loops that iterate over all pairs of vertices for each intermediate vertex.
+
+The space complexity is $O(V^2)$ because it requires a 2D array to store the shortest path distances between all pairs of vertices.
+
+### Applications
+
+#### LeetCode 2976 [Expected difficulty: 7]
+
+[link to problem](https://leetcode.com/problems/minimum-cost-to-convert-string-i)
+
+<details>
+<summary> Intuition</summary>
+
+We may compute the cost for converting each character to every other character using Floyd's algorithm, then use iteration to calculate the total cost for each string in `words`.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+Generally in most cases, the Dijkstra's algorithm would be more efficient for single-source shortest path problems. However, in this specific problem, in worst case, we need to compute the shortest paths between all pairs of characters (from 'a' to 'z') to determine the minimum conversion costs. Floyd-Warshall is well-suited for this all-pairs shortest path requirement, especially given the limited number of characters (26 letters). 
+
+Thus, using Floyd-Warshall simplifies the implementation and ensures we have the minimum costs readily available for any character conversion needed in the words.
+
+```python
+class Solution:
+    def minimumCost(self, source: str, target: str, original: List[str], changed: List[str], cost: List[int]) -> int:
+        def floydWarshall(edges,n,inf:int=10**9,is_bidirectional:bool=False):
+            # return minDistance of all 
+            minD=[[0 if i==j else inf for i in range(n)] for j in range(n)]
+            for a,b,w in edges:
+                minD[a][b]=min(minD[a][b],w)
+                if is_bidirectional: minD[b][a]=min(minD[a][b],w)
+            for k in range(n):
+                for a in range(n):
+                    if a==k: continue
+                    for b in range(n):
+                        if a==b or b==k: continue
+                        minD[a][b]=min(minD[a][b],minD[a][k]+minD[k][b])
+            return minD
+        inf=10**9+1
+        n=26
+        m=len(source)
+        adj=floydWarshall(zip(map(lambda x: ord(x)-ord('a'),original),map(lambda x: ord(x)-ord('a'),changed),cost),n,inf=inf)
+        # print(adj)
+        res=0
+        for i in range(m):
+            d=adj[ord(source[i])-ord('a')][ord(target[i])-ord('a')]
+            # print(ord(source[i])-ord('a'),ord(target[i])-ord('a'),d)
+            if d==inf: return -1
+            res+=d
+        return res
+```
+
+</details>
+
+
