@@ -12,23 +12,16 @@ Jump right into some completed pages?
 
 Here is the list of pages that have been finished.
 
-
 - [x] [Sorting](./category/sorting)
 
-
 - [x] [Searching](./category/searching)
-
 
 - [x] [Greedy Algorithms](./category/greedy-algorithms)
 
 - [x] [Minimal spanning tree](./category/minimal-spanning-tree)
 
-
 - [x] [Shortest path](./category/shortest-path)
-
 
 - [x] [Dynamic Programming](./category/dynamic-programming)
 
-
 - [ ] [Additional Data Structures](./category/additional-data-structures)
-
