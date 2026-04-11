@@ -1,0 +1,212 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Delaunay Triangulation
+
+The Delaunay triangulation of a point set $P$ in general position is the
+unique triangulation in which no point of $P$ lies strictly inside the
+circumcircle of any triangle — the *empty circle property*. Equivalently, it
+is the dual of the Voronoi diagram, and among all triangulations of $P$ it
+is the one that lexicographically maximizes the sorted sequence of interior
+angles.
+
+The implementation below is the textbook brute-force "certify the empty
+circle" recipe: for every triple of points, test whether the circumcircle
+contains any other point; if none does, the triangle is Delaunay. It runs
+in $O(n^4)$ time, which is fine for small inputs and for validating more
+clever algorithms. Production systems use Bowyer-Watson or randomized
+incremental insertion instead.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    points = xs[0]
+    n = len(points)
+    triangles = []
+
+    def orient(a, b, c):
+        return ((b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]))
+
+    def in_circle(a, b, c, d):
+        ax, ay = a[0]-d[0], a[1]-d[1]
+        bx, by = b[0]-d[0], b[1]-d[1]
+        cx, cy = c[0]-d[0], c[1]-d[1]
+        det = (ax*(by*(cx*cx+cy*cy) - cy*(bx*bx+by*by))
+             - ay*(bx*(cx*cx+cy*cy) - cx*(bx*bx+by*by))
+             + (ax*ax+ay*ay)*(bx*cy - by*cx))
+        return det > 0
+
+    for i in range(n):
+        for j in range(i+1, n):
+            for k in range(j+1, n):
+                o = orient(points[i], points[j], points[k])
+                if o == 0:
+                    continue
+                if o < 0:
+                    a, b, c = points[i], points[k], points[j]
+                    tri = (i, k, j)
+                else:
+                    a, b, c = points[i], points[j], points[k]
+                    tri = (i, j, k)
+                ok = True
+                for m in range(n):
+                    if m in tri:
+                        continue
+                    if in_circle(a, b, c, points[m]):
+                        ok = False
+                        break
+                if ok:
+                    triangles.append(sorted(tri))
+    triangles.sort()
+    return triangles
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <array>
+#include <vector>
+
+using Pt = std::array<double, 2>;
+
+long double orient(Pt a, Pt b, Pt c) {
+    return (long double)(b[0]-a[0])*(c[1]-a[1])
+         - (long double)(b[1]-a[1])*(c[0]-a[0]);
+}
+
+bool in_circle(Pt a, Pt b, Pt c, Pt d) {
+    long double ax = a[0]-d[0], ay = a[1]-d[1];
+    long double bx = b[0]-d[0], by = b[1]-d[1];
+    long double cx = c[0]-d[0], cy = c[1]-d[1];
+    long double det = ax*(by*(cx*cx+cy*cy) - cy*(bx*bx+by*by))
+                    - ay*(bx*(cx*cx+cy*cy) - cx*(bx*bx+by*by))
+                    + (ax*ax+ay*ay)*(bx*cy - by*cx);
+    return det > 0;
+}
+
+std::vector<std::array<int,3>> delaunay(const std::vector<Pt>& p) {
+    std::vector<std::array<int,3>> out;
+    int n = p.size();
+    for (int i = 0; i < n; ++i)
+        for (int j = i+1; j < n; ++j)
+            for (int k = j+1; k < n; ++k) {
+                long double o = orient(p[i], p[j], p[k]);
+                if (o == 0) continue;
+                std::array<int,3> tri = (o < 0)
+                    ? std::array<int,3>{i, k, j}
+                    : std::array<int,3>{i, j, k};
+                bool ok = true;
+                for (int m = 0; m < n && ok; ++m) {
+                    if (m == tri[0] || m == tri[1] || m == tri[2]) continue;
+                    if (in_circle(p[tri[0]], p[tri[1]], p[tri[2]], p[m])) ok = false;
+                }
+                if (ok) out.push_back(tri);
+            }
+    return out;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Delaunay triangulation via empty-circle certification"
+  tests={[
+    {
+      input: [
+        [[0, 0], [4, 0], [2, 3], [2, 1]]
+      ],
+      expected: [[0, 1, 3], [0, 3, 2], [1, 2, 3]]
+    }
+  ]}
+>
+{`
+def solve(xs):
+    points = xs[0]
+    n = len(points)
+    triangles = []
+
+    def orient(a, b, c):
+        return ((b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]))
+
+    def in_circle(a, b, c, d):
+        ax, ay = a[0]-d[0], a[1]-d[1]
+        bx, by = b[0]-d[0], b[1]-d[1]
+        cx, cy = c[0]-d[0], c[1]-d[1]
+        det = (ax*(by*(cx*cx+cy*cy) - cy*(bx*bx+by*by))
+             - ay*(bx*(cx*cx+cy*cy) - cx*(bx*bx+by*by))
+             + (ax*ax+ay*ay)*(bx*cy - by*cx))
+        return det > 0
+
+    for i in range(n):
+        for j in range(i+1, n):
+            for k in range(j+1, n):
+                o = orient(points[i], points[j], points[k])
+                if o == 0:
+                    continue
+                if o < 0:
+                    a, b, c = points[i], points[k], points[j]
+                    tri = (i, k, j)
+                else:
+                    a, b, c = points[i], points[j], points[k]
+                    tri = (i, j, k)
+                ok = True
+                for m in range(n):
+                    if m in tri:
+                        continue
+                    if in_circle(a, b, c, points[m]):
+                        ok = False
+                        break
+                if ok:
+                    triangles.append(sorted(tri))
+    triangles.sort()
+    return triangles
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n^4)$. There are order $n^3$ candidate triangles and each one is
+certified by scanning the other $n - 3$ points against an in-circle
+predicate.
+
+### Space analysis
+
+$O(n)$ auxiliary beyond the input points, plus the output list of triangles.
+
+### Proof of correctness
+
+A triangle with vertices in $P$ belongs to the Delaunay triangulation of a
+point set in general position iff its circumcircle contains no other point
+of $P$ in its open interior. This is the classical empty-circle
+characterization of Delaunay (Delaunay 1934). The algorithm enumerates
+every triple and keeps exactly the triples that pass the empty-circle test,
+so it outputs exactly the Delaunay triangles. General position is assumed:
+collinear triples are filtered by the orientation test, and the input is
+expected to contain no four cocircular points. See de Berg et al., Chapter
+9, for a full derivation and for the efficient Bowyer-Watson algorithm.
+
+## Extensions
+
+## Applications
+
+## References
+
+- de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 9 (Delaunay Triangulations).
+- Delaunay, B. "Sur la sphere vide." *Bulletin de l'Academie des Sciences de l'URSS*, 1934.
+- [cp-algorithms — Delaunay triangulation](https://cp-algorithms.com/geometry/delaunay.html)

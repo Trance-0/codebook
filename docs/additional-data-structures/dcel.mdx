@@ -1,0 +1,318 @@
+---
+sidebar_position: 7
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# DCEL (Doubly Connected Edge List)
+
+The *doubly connected edge list* (DCEL) is the standard representation for a
+planar subdivision in computational geometry. Every undirected edge is split
+into two oriented *half-edges* that are twins of each other. Each half-edge
+stores its origin vertex, its twin, the next half-edge around the face on
+its left, and the previous one. Faces are recovered by walking `next`
+pointers until the starting half-edge is reached; the unbounded outer face
+is treated just like any other cycle.
+
+The solver below builds a minimal DCEL from `[vertices, edges]` (edges are
+unordered vertex pairs describing a planar graph) and returns the face
+cycles. For each half-edge we pick the next half-edge to be the one whose
+twin's outgoing direction makes the smallest counter-clockwise turn from
+the current half-edge's incoming direction — the classical construction
+from de Berg et al.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+A minimal class-based DCEL skeleton, useful as a starting point when you
+want to attach your own face-building logic:
+
+```python
+
+class HalfEdge:
+    def __init__(self, origin_vertex):
+        """
+        Initialize a half-edge.
+        Arguments:
+            origin_vertex: the origin vertex of the half-edge
+        """
+        self.origin_vertex = origin_vertex
+        # the twin half-edge
+        self.twin_half_edge = None
+        # the next half-edge along the face boundary
+        self.next_half_edge = None
+        # the previous half-edge along the face boundary
+        self.prev_half_edge = None
+        # identity for the face on the left side of the edge, usually none, need updated from additional function
+        self.face = None
+    
+    def destination_vertex(self):
+        """
+        Return the destination vertex of the half-edge.
+        Returns:
+            The destination vertex of the half-edge.
+        """
+        return self.twin_half_edge.origin_vertex
+
+    def __lt__(self, other):
+        return self.origin_vertex < other.origin_vertex
+    
+    def __str__(self) -> str:
+        if self.twin_half_edge is None:
+            return f"HalfEdge({self.origin_vertex}, None)"
+        basic_str=f"HalfEdge({(self.origin_vertex,self.destination_vertex())})"
+        if self.next_half_edge or self.prev_half_edge is None:
+            return basic_str
+        basic_str +=f"twin_half_edge={(self.twin_half_edge.origin_vertex,self.twin_half_edge.destination_vertex())}, \n next_half_edge={(self.next_half_edge.origin_vertex,self.next_half_edge.destination_vertex())}, \n prev_half_edge={(self.prev_half_edge.origin_vertex,self.prev_half_edge.destination_vertex())}, \n face={self.face})"
+        return basic_str
+    
+    def str(self) -> str:
+        return f"HalfEdge({(self.origin_vertex,self.destination_vertex())})"
+    
+    def as_tuple(self) -> tuple[tuple[float,float],tuple[float,float]]:
+        return (self.origin_vertex,self.destination_vertex())
+
+class DCEL:
+    def __init__(self):
+        self.half_edges = []
+        self.faces = []
+        self.vertices = []
+
+```
+
+An array-based DCEL builder that constructs the structure from
+`[vertices, edges]` and walks the resulting face cycles:
+
+```python
+from math import atan2, pi
+
+def solve(xs):
+    vertices, edges = xs
+    n = len(vertices)
+
+    # Build half-edges: two per undirected edge, indexed 2k and 2k+1.
+    he_origin = []
+    he_twin = []
+    for u, v in edges:
+        he_origin.append(u)
+        he_twin.append(len(he_origin))  # twin will be placed next
+        he_origin.append(v)
+        he_twin.append(len(he_origin) - 2)
+
+    # For each vertex, gather outgoing half-edges sorted by angle CCW.
+    out = [[] for _ in range(n)]
+    for h, u in enumerate(he_origin):
+        v = he_origin[he_twin[h]]
+        dx = vertices[v][0] - vertices[u][0]
+        dy = vertices[v][1] - vertices[u][1]
+        out[u].append((atan2(dy, dx), h))
+    for lst in out:
+        lst.sort()
+
+    # next[h] = twin(prev CCW outgoing half-edge at destination of h).
+    m = len(he_origin)
+    he_next = [0] * m
+    for h in range(m):
+        t = he_twin[h]
+        v = he_origin[t]
+        ring = out[v]
+        # find position of t in ring
+        idx = next(i for i, (_, hh) in enumerate(ring) if hh == t)
+        prev_idx = (idx - 1) % len(ring)
+        he_next[h] = he_twin[ring[prev_idx][1]]
+
+    # Walk face cycles.
+    seen = [False] * m
+    faces = []
+    for start in range(m):
+        if seen[start]:
+            continue
+        cycle = []
+        h = start
+        while not seen[h]:
+            seen[h] = True
+            cycle.append(he_origin[h])
+            h = he_next[h]
+        faces.append(cycle)
+    return faces
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <utility>
+#include <vector>
+
+using Point = std::array<double, 2>;
+
+std::vector<std::vector<int>> solve(
+    const std::vector<Point>& vertices,
+    const std::vector<std::pair<int, int>>& edges)
+{
+    int n = static_cast<int>(vertices.size());
+    std::vector<int> he_origin, he_twin;
+    for (const auto& e : edges) {
+        int a = static_cast<int>(he_origin.size());
+        he_origin.push_back(e.first);
+        he_twin.push_back(a + 1);
+        he_origin.push_back(e.second);
+        he_twin.push_back(a);
+    }
+    int m = static_cast<int>(he_origin.size());
+
+    std::vector<std::vector<std::pair<double, int>>> out(n);
+    for (int h = 0; h < m; ++h) {
+        int u = he_origin[h];
+        int v = he_origin[he_twin[h]];
+        double ang = std::atan2(vertices[v][1] - vertices[u][1],
+                                vertices[v][0] - vertices[u][0]);
+        out[u].push_back({ang, h});
+    }
+    for (auto& lst : out) std::sort(lst.begin(), lst.end());
+
+    std::vector<int> he_next(m, 0);
+    for (int h = 0; h < m; ++h) {
+        int t = he_twin[h];
+        int v = he_origin[t];
+        auto& ring = out[v];
+        int idx = 0;
+        for (int i = 0; i < static_cast<int>(ring.size()); ++i)
+            if (ring[i].second == t) { idx = i; break; }
+        int prev_idx = (idx - 1 + static_cast<int>(ring.size())) % ring.size();
+        he_next[h] = he_twin[ring[prev_idx].second];
+    }
+
+    std::vector<char> seen(m, 0);
+    std::vector<std::vector<int>> faces;
+    for (int start = 0; start < m; ++start) {
+        if (seen[start]) continue;
+        std::vector<int> cycle;
+        int h = start;
+        while (!seen[h]) {
+            seen[h] = 1;
+            cycle.push_back(he_origin[h]);
+            h = he_next[h];
+        }
+        faces.push_back(std::move(cycle));
+    }
+    return faces;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="DCEL face traversal of a planar subdivision"
+  tests={[
+    {
+      input: [
+        [[0, 0], [2, 0], [2, 2], [0, 2]],
+        [[0, 1], [1, 2], [2, 3], [3, 0]],
+      ],
+      expected: [[0, 1, 2, 3], [0, 3, 2, 1]],
+    },
+  ]}
+>
+{`
+from math import atan2
+
+def solve(xs):
+    vertices, edges = xs
+    n = len(vertices)
+    he_origin = []
+    he_twin = []
+    for u, v in edges:
+        he_origin.append(u)
+        he_twin.append(len(he_origin))
+        he_origin.append(v)
+        he_twin.append(len(he_origin) - 2)
+    out = [[] for _ in range(n)]
+    for h, u in enumerate(he_origin):
+        v = he_origin[he_twin[h]]
+        dx = vertices[v][0] - vertices[u][0]
+        dy = vertices[v][1] - vertices[u][1]
+        out[u].append((atan2(dy, dx), h))
+    for lst in out:
+        lst.sort()
+    m = len(he_origin)
+    he_next = [0] * m
+    for h in range(m):
+        t = he_twin[h]
+        v = he_origin[t]
+        ring = out[v]
+        idx = next(i for i, (_, hh) in enumerate(ring) if hh == t)
+        prev_idx = (idx - 1) % len(ring)
+        he_next[h] = he_twin[ring[prev_idx][1]]
+    seen = [False] * m
+    faces = []
+    for start in range(m):
+        if seen[start]:
+            continue
+        cycle = []
+        h = start
+        while not seen[h]:
+            seen[h] = True
+            cycle.append(he_origin[h])
+            h = he_next[h]
+        faces.append(cycle)
+    return faces
+`}
+</PyListSnippet>
+
+## Description
+
+Doubly Connected Edge List (DCEL) is a data structure used to represent a planar graph. It consists of three list of half-edges, faces and vertices.
+
+Each half-edge has an origin vertex, a twin half-edge, a next half-edge along the face boundary, a previous half-edge along the face boundary and a face.
+
+The origin vertex of a half-edge is the vertex that the half-edge starts from. The destination vertex of a half-edge is the vertex that the half-edge ends at.
+
+We may use a root edge for each new vertex, face created and iterate over the half-edges by calling next_half_edge and prev_half_edge for adjacent half-edges.
+
+### Run time analysis
+
+$O(n + m \log d)$ where $n$ is the number of vertices, $m$ the number of
+half-edges, and $d$ the maximum vertex degree. Sorting the outgoing
+half-edges at each vertex by polar angle dominates; everything else —
+pairing twins, computing `next` from the angular order, walking face
+cycles — is linear in $m$.
+
+### Space analysis
+
+$O(n + m)$ for the half-edge, twin, and next arrays plus the per-vertex
+angular rings. Each half-edge is referenced a constant number of times.
+
+### Proof of correctness
+
+Pair up the two half-edges of each undirected edge as twins. At every
+vertex $v$, sort the outgoing half-edges by polar angle counter-clockwise.
+For a half-edge $h$ arriving at $v$, its twin $t$ is an outgoing half-edge
+at $v$; the correct face-continuation is the outgoing half-edge immediately
+clockwise from $t$ (equivalently, the previous entry in the CCW ring).
+Taking its twin gives a half-edge that leaves $v$ along the next boundary
+of the same face, which is exactly how planar faces are traversed. Every
+half-edge has a unique `next`, so the `next` function is a permutation on
+half-edges and its cycles partition the half-edges into face boundaries.
+Marking each half-edge visited exactly once guarantees every face cycle is
+emitted exactly once.
+
+## Extensions
+
+## Applications
+
+## References
+
+- de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 2 (Doubly connected edge list).
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 10.

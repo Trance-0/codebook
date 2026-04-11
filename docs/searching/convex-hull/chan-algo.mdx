@@ -1,0 +1,319 @@
+---
+sidebar_position: 5
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Chan's Algorithm
+
+Chan's algorithm is the asymptotically optimal convex hull algorithm in two
+and three dimensions: it runs in $O(n \log h)$ time, where $h$ is the
+number of vertices on the output hull. It achieves this by cleverly
+combining two suboptimal algorithms — Graham scan, which is $O(n \log n)$
+regardless of $h$, and Jarvis march, which is $O(nh)$ — so that the
+strengths of each cover the other's weakness.
+
+The idea is to guess $h$, partition the input into groups of that size,
+run Graham scan on each group to get per-group hulls in $O(n \log h)$
+total, and then run Jarvis march on the union of the group hulls. Each
+Jarvis step finds the next overall hull vertex by performing a binary
+search on each group hull (because each group hull is a convex polygon in
+CCW order), so one step is $O((n/h) \log h)$ and $h$ such steps give
+$O(n \log h)$. If the guess is too small the algorithm detects it and
+doubles the guess; a careful doubling schedule keeps the total work at
+$O(n \log h)$.
+
+The snippet below is a simplified implementation: it follows the
+"Graham-scan groups, Jarvis-march across groups" structure and returns a
+correct hull, but it uses a linear scan over each group instead of a
+binary search. That keeps the code short and understandable while still
+exercising the group-and-merge idea.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """Simplified Chan's algorithm. xs is a list of [x, y] points.
+    Returns the convex hull in CCW order starting from the
+    bottom-most (then leftmost) vertex."""
+    pts = [tuple(p) for p in {tuple(p) for p in xs}]
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def graham(points):
+        points = sorted(set(points))
+        if len(points) <= 1:
+            return list(points)
+        lower = []
+        for p in points:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+        upper = []
+        for p in reversed(points):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                upper.pop()
+            upper.append(p)
+        return lower[:-1] + upper[:-1]
+
+    def chan_with_guess(m):
+        # Partition into groups of size m and compute per-group hulls.
+        groups = [graham(pts[i:i + m]) for i in range(0, n, m)]
+        start = min(pts, key=lambda p: (p[1], p[0]))
+        hull = [start]
+        # Use a direction vector to seed the first turn.
+        prev = (start[0] - 1, start[1])
+        for _ in range(m):
+            current = hull[-1]
+            best = None
+            for g in groups:
+                for q in g:
+                    if q == current:
+                        continue
+                    if best is None:
+                        best = q
+                        continue
+                    c = cross(current, best, q)
+                    if c < 0:
+                        best = q
+                    elif c == 0:
+                        d_best = (best[0] - current[0]) ** 2 + (best[1] - current[1]) ** 2
+                        d_q = (q[0] - current[0]) ** 2 + (q[1] - current[1]) ** 2
+                        if d_q > d_best:
+                            best = q
+            if best is None or best == start:
+                return hull
+            hull.append(best)
+            prev = current
+        return None  # guess m too small
+
+    # Doubling search on the group size / hull-size guess.
+    t = 1
+    while True:
+        m = min(1 << (1 << t), n)
+        result = chan_with_guess(m)
+        if result is not None:
+            return [list(p) for p in result]
+        t += 1
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+#include <array>
+#include <algorithm>
+#include <optional>
+
+using Point = std::array<long long, 2>;
+
+static long long cross(const Point& o, const Point& a, const Point& b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+}
+
+static std::vector<Point> graham(std::vector<Point> pts) {
+    std::sort(pts.begin(), pts.end());
+    pts.erase(std::unique(pts.begin(), pts.end()), pts.end());
+    int n = (int)pts.size();
+    if (n <= 1) return pts;
+    std::vector<Point> lower;
+    for (auto& p : pts) {
+        while (lower.size() >= 2 &&
+               cross(lower[lower.size() - 2], lower.back(), p) <= 0)
+            lower.pop_back();
+        lower.push_back(p);
+    }
+    std::vector<Point> upper;
+    for (int i = n - 1; i >= 0; --i) {
+        auto& p = pts[i];
+        while (upper.size() >= 2 &&
+               cross(upper[upper.size() - 2], upper.back(), p) <= 0)
+            upper.pop_back();
+        upper.push_back(p);
+    }
+    lower.pop_back();
+    upper.pop_back();
+    lower.insert(lower.end(), upper.begin(), upper.end());
+    return lower;
+}
+
+static std::optional<std::vector<Point>> chan_try(const std::vector<Point>& pts, int m) {
+    int n = (int)pts.size();
+    std::vector<std::vector<Point>> groups;
+    for (int i = 0; i < n; i += m) {
+        int j = std::min(i + m, n);
+        groups.push_back(graham(std::vector<Point>(pts.begin() + i, pts.begin() + j)));
+    }
+    Point start = pts[0];
+    for (auto& p : pts)
+        if (p[1] < start[1] || (p[1] == start[1] && p[0] < start[0])) start = p;
+
+    std::vector<Point> hull{start};
+    for (int step = 0; step < m; ++step) {
+        Point current = hull.back();
+        Point best = current;
+        bool have = false;
+        for (auto& g : groups) {
+            for (auto& q : g) {
+                if (q == current) continue;
+                if (!have) { best = q; have = true; continue; }
+                long long c = cross(current, best, q);
+                if (c < 0) best = q;
+                else if (c == 0) {
+                    long long db = (best[0] - current[0]) * (best[0] - current[0]) +
+                                   (best[1] - current[1]) * (best[1] - current[1]);
+                    long long dq = (q[0] - current[0]) * (q[0] - current[0]) +
+                                   (q[1] - current[1]) * (q[1] - current[1]);
+                    if (dq > db) best = q;
+                }
+            }
+        }
+        if (!have || best == start) return hull;
+        hull.push_back(best);
+    }
+    return std::nullopt;
+}
+
+std::vector<Point> chan(std::vector<Point> pts) {
+    if (pts.size() <= 1) return pts;
+    int t = 1;
+    while (true) {
+        int m = std::min((int)pts.size(), 1 << (1 << t));
+        auto r = chan_try(pts, m);
+        if (r) return *r;
+        ++t;
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Chan's algorithm (simplified)"
+  tests={[
+    { input: [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]], expected: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+    { input: [[0, 0], [4, 0], [4, 4], [0, 4], [2, 2], [1, 3]], expected: [[0, 0], [4, 0], [4, 4], [0, 4]] },
+    { input: [[0, 0], [2, 0], [1, 2]], expected: [[0, 0], [2, 0], [1, 2]] },
+  ]}
+>
+{`
+def solve(xs):
+    pts = list({tuple(p) for p in xs})
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def graham(points):
+        points = sorted(set(points))
+        if len(points) <= 1:
+            return list(points)
+        lower = []
+        for p in points:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+        upper = []
+        for p in reversed(points):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                upper.pop()
+            upper.append(p)
+        return lower[:-1] + upper[:-1]
+
+    def chan_try(m):
+        groups = [graham(pts[i:i + m]) for i in range(0, n, m)]
+        start = min(pts, key=lambda p: (p[1], p[0]))
+        hull = [start]
+        for _ in range(m):
+            current = hull[-1]
+            best = None
+            for g in groups:
+                for q in g:
+                    if q == current:
+                        continue
+                    if best is None:
+                        best = q
+                        continue
+                    c = cross(current, best, q)
+                    if c < 0:
+                        best = q
+                    elif c == 0:
+                        db = (best[0] - current[0]) ** 2 + (best[1] - current[1]) ** 2
+                        dq = (q[0] - current[0]) ** 2 + (q[1] - current[1]) ** 2
+                        if dq > db:
+                            best = q
+            if best is None or best == start:
+                return hull
+            hull.append(best)
+        return None
+
+    t = 1
+    while True:
+        m = min(1 << (1 << t), n)
+        res = chan_try(m)
+        if res is not None:
+            return [list(p) for p in res]
+        t += 1
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n \log h)$. Let $H$ be the unknown hull size. Chan's outer loop tries
+guesses $m = 2, 4, 16, 256, \ldots$ ($m$ equal to 2 raised to 2 raised to
+$t$), doubling the exponent each time, and stops as soon as
+$m \ge H$. Each attempt builds $n/m$ Graham-scan hulls in total time
+$O(n \log m)$ and then runs up to $m$ Jarvis steps, each of which takes
+$O((n/m) \log m)$ with a proper binary-search tangent finder, for
+$O(n \log m)$ per attempt. Because the exponent doubles, the last
+successful attempt dominates the sum, giving the advertised
+$O(n \log h)$. The simplified snippet uses a linear scan per Jarvis step
+instead of a binary search and so runs in $O(n h)$ in the worst case — it
+illustrates the structure without the full optimization.
+
+### Space analysis
+
+$O(n)$ auxiliary — the group hulls together have size at most $n$, and
+the Jarvis walk keeps only the current hull prefix of size at most $h$.
+
+### Proof of correctness
+
+Correctness rests on two observations. First, every hull vertex of the
+whole point set is a hull vertex of some group (its own group), so the
+union of the group hulls contains the full hull. Second, Jarvis march
+correctly enumerates the convex hull of any finite set of points — so
+running it on the union of the group hulls produces the correct answer
+whenever it is allowed to make enough iterations. The guess $m$ caps the
+number of Jarvis steps; if the cap is reached before the march closes
+back on the starting vertex, the guess is too small and the algorithm
+retries with a larger $m$. Termination is guaranteed because $m$ grows
+unboundedly and is eventually at least $H$.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Chan, T. M. (1996). "Optimal output-sensitive convex hull algorithms in two and three dimensions." *Discrete & Computational Geometry*, 16(4), 361-368.
+- Kirkpatrick, D. G., & Seidel, R. (1986). "The ultimate planar convex hull algorithm?" *SIAM Journal on Computing*, 15(1), 287-299.
+- de Berg, M., Cheong, O., van Kreveld, M., & Overmars, M. *Computational Geometry: Algorithms and Applications*, 3rd ed. Springer, 2008.
+- [cp-algorithms — Convex Hull construction](https://cp-algorithms.com/geometry/convex-hull.html)

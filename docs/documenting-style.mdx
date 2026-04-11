@@ -4,6 +4,7 @@ sidebar_position: 3
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Documenting Style
 
@@ -49,6 +50,22 @@ int main() {
 </TabItem>
 
 </Tabs> 
+
+## Example
+
+<PyListSnippet
+  title="Reverse a list"
+  tests={[
+    { input: [1, 2, 3], expected: [3, 2, 1] },
+    { input: [], expected: [] },
+  ]}
+>
+{`
+def solve(xs):
+    return xs[::-1]
+`}
+</PyListSnippet>
+
 
 ## Description (Header 1)
 

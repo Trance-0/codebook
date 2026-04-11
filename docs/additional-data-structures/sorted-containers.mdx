@@ -2,5 +2,151 @@
 sidebar_position: 4
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
 # Sorted Containers
 
+A *sorted container* maintains a collection of elements in sorted order while
+supporting insertion, deletion, and order-based queries such as rank (how
+many elements are strictly less than a given value) and positional access.
+Balanced BSTs, skip lists, and bucket-based structures all fit this role.
+
+In competitive programming the simplest portable implementation is a plain
+Python list kept sorted via `bisect`. Insertions and deletions are $O(n)$
+because of the underlying array shifts, but `bisect_left` gives $O(\log n)$
+rank queries, which is usually what matters. The example replays a script of
+`add`, `remove`, and `rank` operations and returns the rank answers in order.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+import bisect
+
+def solve(xs):
+    ops = xs
+    data = []
+    answers = []
+    for op in ops:
+        kind = op[0]
+        v = op[1]
+        if kind == "add":
+            bisect.insort(data, v)
+        elif kind == "remove":
+            i = bisect.bisect_left(data, v)
+            if i < len(data) and data[i] == v:
+                data.pop(i)
+        else:  # "rank"
+            answers.append(bisect.bisect_left(data, v))
+    return answers
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <string>
+#include <vector>
+
+struct Op {
+    std::string kind; // "add", "remove", or "rank"
+    int value;
+};
+
+std::vector<int> solve(const std::vector<Op>& ops) {
+    std::vector<int> data;
+    std::vector<int> answers;
+    for (const auto& op : ops) {
+        auto it = std::lower_bound(data.begin(), data.end(), op.value);
+        if (op.kind == "add") {
+            data.insert(it, op.value);
+        } else if (op.kind == "remove") {
+            if (it != data.end() && *it == op.value) data.erase(it);
+        } else {
+            answers.push_back(static_cast<int>(it - data.begin()));
+        }
+    }
+    return answers;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Sorted multiset with rank queries"
+  tests={[
+    {
+      input: [["add", 5], ["add", 1], ["add", 3], ["rank", 3], ["add", 3], ["rank", 3], ["remove", 3], ["rank", 3]],
+      expected: [1, 1, 1],
+    },
+    {
+      input: [["add", 10], ["add", 20], ["add", 30], ["rank", 25]],
+      expected: [2],
+    },
+  ]}
+>
+{`
+import bisect
+
+def solve(xs):
+    ops = xs
+    data = []
+    answers = []
+    for op in ops:
+        kind = op[0]
+        v = op[1]
+        if kind == "add":
+            bisect.insort(data, v)
+        elif kind == "remove":
+            i = bisect.bisect_left(data, v)
+            if i < len(data) and data[i] == v:
+                data.pop(i)
+        else:
+            answers.append(bisect.bisect_left(data, v))
+    return answers
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(\log n)$ for each rank query, since `bisect_left` runs a plain binary
+search over the sorted list. `add` and `remove` are $O(n)$ in the worst case
+because inserting or deleting in a Python list shifts the tail; a true
+balanced-BST or order-statistic tree brings those down to $O(\log n)$.
+
+### Space analysis
+
+$O(n)$ total for the list of live elements. Each operation uses only $O(1)$
+auxiliary state.
+
+### Proof of correctness
+
+The list `data` is kept sorted as a loop invariant. `bisect.insort` finds the
+unique index $i$ with `data[i-1] <= v <= data[i]` and inserts $v$ there, so
+the list remains sorted. `remove` calls `bisect_left(data, v)` which returns
+the first index whose value is not less than $v$; if that slot equals $v$
+deleting it removes one occurrence while preserving the order. For a rank
+query, `bisect_left(data, v)` returns the number of elements strictly less
+than $v$ because it is the smallest index $i$ with `data[i] >= v`, and all
+earlier entries are strictly smaller by the invariant.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 10.
+- [cp-algorithms — Fenwick tree](https://cp-algorithms.com/data_structures/fenwick.html)
+- [cp-algorithms — Sparse table](https://cp-algorithms.com/data_structures/sparse-table.html)

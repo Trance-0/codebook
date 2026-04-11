@@ -4,6 +4,7 @@ sidebar_position: 1
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Binary Search
 
@@ -11,10 +12,31 @@ Binary search is a search algorithm that finds the first (`lower_bound`) or last
 
 It is the most common used search algorithm in computer science, if you find any $O(n\log n)$ algorithm, it is likely to be a binary search algorithm. You should always consider using binary search first especially when there is "test and trial" pattern in the problem and the required solution is a single number.
 
+Binary search finds a target in a sorted array by halving the candidate
+interval on every step. More generally, it locates the first index of a
+sorted array at which some monotone predicate $p$ flips from false to true:
+as long as $p$ is monotone over the search space, you can binary search it
+even when the space is abstract (answers to an optimization problem, a
+real interval, the height of a tree, etc.).
+
+The template below uses the half-open interval $[lo, hi)$ with the
+termination condition `lo < hi` and the shrinking rules `hi = mid` or
+`lo = mid + 1`. This layout is robust against off-by-one bugs: the loop
+only terminates when `lo == hi`, and that single index is the answer (or
+`len(nums)` if no element satisfies the predicate).
+
+For a classic sorted-array lookup, the predicate is "the element at this
+index is at least the target". The returned index is either the position
+of the target or the insertion index where it would be placed, so a final
+equality check recovers the "found / not found" answer.
+
 ## Codes
 
 <Tabs>
 <TabItem value="Java" label="Java">
+
+Original compact template:
+
 ```java
 public int BinarySearch(int[] nums, int target) {
     int i=0;
@@ -31,8 +53,12 @@ public int BinarySearch(int[] nums, int target) {
     return -1;
 }
 ```
+
 </TabItem>
 <TabItem value="Python" label="Python">
+
+Original compact template:
+
 ```python
 def binary_search(nums, target):
     """
@@ -52,8 +78,113 @@ def binary_search(nums, target):
             return (i+j)//2
     return -1
 ```
+
+A `lower_bound` / `search` pair in the half-open template, plus a
+thin `solve(xs)` wrapper:
+
+```python
+def lower_bound(nums, target):
+    """First index i with nums[i] >= target, or len(nums) if none."""
+    lo, hi = 0, len(nums)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if nums[mid] >= target:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo
+
+def search(nums, target):
+    """Index of target in sorted nums, or -1 if absent."""
+    i = lower_bound(nums, target)
+    return i if i < len(nums) and nums[i] == target else -1
+
+def solve(xs):
+    target, nums = xs
+    return search(nums, target)
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+
+int lower_bound_idx(const std::vector<int>& nums, int target) {
+    int lo = 0, hi = (int)nums.size();
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (nums[mid] >= target) hi = mid;
+        else                     lo = mid + 1;
+    }
+    return lo;
+}
+
+int search(const std::vector<int>& nums, int target) {
+    int i = lower_bound_idx(nums, target);
+    if (i < (int)nums.size() && nums[i] == target) return i;
+    return -1;
+}
+```
+
 </TabItem>
 </Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Binary search on a sorted list"
+  tests={[
+    { input: [3, [1, 2, 3, 4, 5]], expected: 2 },
+    { input: [6, [1, 2, 3, 4, 5]], expected: -1 },
+    { input: [1, [1, 1, 1, 1]], expected: 0 },
+    { input: [0, []], expected: -1 },
+  ]}
+>
+{`
+def solve(xs):
+    target, nums = xs
+    lo, hi = 0, len(nums)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if nums[mid] >= target:
+            hi = mid
+        else:
+            lo = mid + 1
+    if lo < len(nums) and nums[lo] == target:
+        return lo
+    return -1
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(\log n)$. Each iteration halves the size of the interval $hi - lo$, so
+the loop runs at most $\lceil \log_2 n \rceil$ times and each iteration is
+constant work.
+
+### Space analysis
+
+$O(1)$ auxiliary. Only two index variables are kept; the iterative form
+needs no call stack.
+
+### Proof of correctness
+
+Maintain the invariant "the first index $i$ with $p(i)$ true lies in the
+half-open interval $[lo, hi)$, or no such index exists and the answer is
+$n$". Initially $lo = 0$ and $hi = n$, so the invariant holds trivially.
+At each step, let $m$ be the midpoint. If $p(m)$ is true, by monotonicity
+every index at $m$ or above is also true, so shrinking to $[lo, m)$ by
+`hi = mid` preserves the invariant. If $p(m)$ is false, by monotonicity
+every index at $m$ or below is also false, so shrinking to $[m+1, hi)$ by
+`lo = mid + 1` preserves the invariant. Because $hi - lo$ strictly
+decreases on every iteration, the loop terminates with $lo = hi$, at which
+point the invariant forces $lo$ to be the first true index (or $n$).
+
+## Extensions
 
 ## Applications
 
@@ -118,3 +249,9 @@ class Solution:
 ```
 
 </details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Section 2.3.
+- [cp-algorithms — Binary search](https://cp-algorithms.com/num_methods/binary_search.html)
+- Bentley, Jon. *Programming Pearls*, 2nd ed., Column 4 ("Writing Correct Programs").

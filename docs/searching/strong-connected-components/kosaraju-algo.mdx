@@ -1,0 +1,240 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Kosaraju's Algorithm
+
+A *strongly connected component*, or SCC, of a directed graph is a maximal
+set of vertices in which every pair is mutually reachable. Kosaraju's
+algorithm finds all SCCs with two linear passes of depth first search.
+
+The key observation is that a graph and its transpose (the same graph with
+every edge reversed) have identical SCCs. If we run DFS on the original
+graph and record the order in which vertices finish, then run DFS on the
+transpose starting from vertices in reverse-finish order, each DFS tree of
+the second pass is exactly one SCC. The first pass gives us a topological
+order of the condensation; the second pass peels off sinks of that
+condensation one at a time, and a sink SCC cannot reach anything else, so
+each second-pass DFS stays inside its own component.
+
+Compared to Tarjan's one-pass algorithm, Kosaraju is conceptually cleaner
+but traverses the graph twice and requires materialising the transpose.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs = [n, edges]; edges are directed [u, v].
+    Returns list of SCCs, each a sorted list of vertices."""
+    n, edges = xs
+    g  = [[] for _ in range(n)]
+    gr = [[] for _ in range(n)]
+    for u, v in edges:
+        g[u].append(v)
+        gr[v].append(u)
+
+    order, seen = [], [False] * n
+    # first pass: finish-time order on original graph
+    for start in range(n):
+        if seen[start]:
+            continue
+        stack = [(start, 0)]
+        seen[start] = True
+        while stack:
+            u, i = stack[-1]
+            if i < len(g[u]):
+                stack[-1] = (u, i + 1)
+                v = g[u][i]
+                if not seen[v]:
+                    seen[v] = True
+                    stack.append((v, 0))
+            else:
+                order.append(u)
+                stack.pop()
+
+    # second pass: DFS on transpose in reverse finish order
+    comp = [-1] * n
+    sccs = []
+    for start in reversed(order):
+        if comp[start] != -1:
+            continue
+        cid = len(sccs)
+        comp[start] = cid
+        stack = [start]
+        members = []
+        while stack:
+            u = stack.pop()
+            members.append(u)
+            for v in gr[u]:
+                if comp[v] == -1:
+                    comp[v] = cid
+                    stack.append(v)
+        sccs.append(sorted(members))
+    return sccs
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <vector>
+
+std::vector<std::vector<int>> kosaraju(
+        int n, const std::vector<std::pair<int,int>>& edges) {
+    std::vector<std::vector<int>> g(n), gr(n);
+    for (auto [u, v] : edges) {
+        g[u].push_back(v);
+        gr[v].push_back(u);
+    }
+    std::vector<int> order;
+    std::vector<char> seen(n, 0);
+    for (int s = 0; s < n; ++s) {
+        if (seen[s]) continue;
+        std::vector<std::pair<int,int>> st = {{s, 0}};
+        seen[s] = 1;
+        while (!st.empty()) {
+            auto& [u, i] = st.back();
+            if (i < (int)g[u].size()) {
+                int v = g[u][i++];
+                if (!seen[v]) { seen[v] = 1; st.push_back({v, 0}); }
+            } else {
+                order.push_back(u);
+                st.pop_back();
+            }
+        }
+    }
+    std::vector<int> comp(n, -1);
+    std::vector<std::vector<int>> sccs;
+    for (int idx = (int)order.size() - 1; idx >= 0; --idx) {
+        int s = order[idx];
+        if (comp[s] != -1) continue;
+        int cid = (int)sccs.size();
+        sccs.push_back({});
+        std::vector<int> st = {s};
+        comp[s] = cid;
+        while (!st.empty()) {
+            int u = st.back(); st.pop_back();
+            sccs[cid].push_back(u);
+            for (int v : gr[u]) {
+                if (comp[v] == -1) { comp[v] = cid; st.push_back(v); }
+            }
+        }
+        std::sort(sccs[cid].begin(), sccs[cid].end());
+    }
+    return sccs;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Strongly connected components via Kosaraju"
+  tests={[
+    { input: [5, [[0,1],[1,2],[2,0],[1,3],[3,4]]], expected: [[0, 1, 2], [3], [4]] },
+    { input: [4, [[0,1],[1,2],[2,3],[3,0]]], expected: [[0, 1, 2, 3]] },
+    { input: [3, [[0,1],[1,2]]], expected: [[0], [1], [2]] },
+  ]}
+>
+{`
+def solve(xs):
+    n, edges = xs
+    g  = [[] for _ in range(n)]
+    gr = [[] for _ in range(n)]
+    for u, v in edges:
+        g[u].append(v)
+        gr[v].append(u)
+    order, seen = [], [False] * n
+    for start in range(n):
+        if seen[start]:
+            continue
+        stack = [(start, 0)]
+        seen[start] = True
+        while stack:
+            u, i = stack[-1]
+            if i < len(g[u]):
+                stack[-1] = (u, i + 1)
+                v = g[u][i]
+                if not seen[v]:
+                    seen[v] = True
+                    stack.append((v, 0))
+            else:
+                order.append(u)
+                stack.pop()
+    comp = [-1] * n
+    sccs = []
+    for start in reversed(order):
+        if comp[start] != -1:
+            continue
+        cid = len(sccs)
+        comp[start] = cid
+        stack = [start]
+        members = []
+        while stack:
+            u = stack.pop()
+            members.append(u)
+            for v in gr[u]:
+                if comp[v] == -1:
+                    comp[v] = cid
+                    stack.append(v)
+        sccs.append(sorted(members))
+    return sccs
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(V + E)$. Two DFS passes over the graph plus building the transpose,
+each linear in the size of the graph.
+
+### Space analysis
+
+$O(V + E)$. The transpose adjacency list is the same size as the
+original; the finish-order list, component label array, and explicit DFS
+stack each take $O(V)$.
+
+### Proof of correctness
+
+Let $C$ be an SCC of the original graph and let $u$ be the vertex in $C$
+with the largest finish time during the first DFS. We show the second DFS
+started from $u$ (on the transpose) visits exactly $C$.
+
+First, every vertex $v \in C$ is reachable from $u$ in the transpose.
+That is because $v$ is reachable from $u$ in the original graph (they
+share an SCC), and reversing all edges swaps reachability. So every
+vertex of $C$ ends up in the component DFS rooted at $u$.
+
+Second, no vertex outside $C$ is reached. Suppose $w \notin C$ is
+reachable from $u$ in the transpose; then $u$ is reachable from $w$ in
+the original graph. Since $u$ has the largest first-pass finish time in
+$C$, and we process vertices in decreasing finish-time order in the
+second pass, $w$ must have been assigned to a component *before* $u$,
+unless $w$ and $u$ are in the same SCC — contradicting $w \notin C$. A
+standard property of DFS finish times (the "white path" theorem, CLRS
+22.4) formalises that if $u$ has a larger finish time than any vertex of
+its SCC, and $w$ is reachable from $u$ in the transpose, then $w$ shares
+$u$'s SCC. Therefore the second-pass DFS tree rooted at $u$ is precisely
+$C$. $\blacksquare$
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 22.5 (Strongly Connected Components).
+- Sharir, Micha. "A strong-connectivity algorithm and its applications in data flow analysis." *Computers and Mathematics with Applications*, 7(1):67-72, 1981.
+- [cp-algorithms — Strongly connected components, Kosaraju](https://cp-algorithms.com/graph/strongly-connected-components.html)

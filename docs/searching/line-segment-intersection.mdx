@@ -1,0 +1,242 @@
+---
+sidebar_position: 7
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Line Segment Intersection
+
+This is a classical problem in computational geometry. Given a list of line segments, determine if any two of them intersect.
+
+The simplified 1D version is seen all over the place. A key idea of it is the line sweep algorithm.
+
+Given two line segments in the plane, decide whether they intersect.
+Despite the topic sounding continuous, the classical test is entirely
+discrete: it relies only on the sign of the 2D cross product, which tells
+you whether three points turn counterclockwise, clockwise, or are
+collinear.
+
+Let the segments be $AB$ and $CD$. Define the orientation of a triple of
+points $PQR$ as the sign of the cross product of $Q - P$ with $R - P$.
+The segments properly intersect when $C$ and $D$ lie on opposite sides of
+line $AB$ and simultaneously $A$ and $B$ lie on opposite sides of line
+$CD$; that is, the two orientation values differ in sign on each side.
+The collinear case is handled separately by checking whether the
+projections of the segments overlap on each axis.
+
+This predicate is the building block used inside the Bentley-Ottmann
+sweep-line algorithm, which reports all intersections among $n$ segments
+in $O((n + k) \log n)$ time where $k$ is the number of intersections.
+
+## Line Sweep
+
+First, we sort the line segments by their starting points. Then, we sweep a vertical line from left to right. As we sweep, we maintain a data structure to store the active line segments.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def orient(ax, ay, bx, by, cx, cy):
+    """Sign of the cross product of (b-a) x (c-a): +1 CCW, -1 CW, 0 collinear."""
+    v = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+    if v > 0:
+        return 1
+    if v < 0:
+        return -1
+    return 0
+
+def on_segment(ax, ay, bx, by, px, py):
+    """Assuming p is collinear with ab, is p inside the bounding box of ab?"""
+    return min(ax, bx) <= px <= max(ax, bx) and min(ay, by) <= py <= max(ay, by)
+
+def segments_intersect(seg1, seg2):
+    ax, ay, bx, by = seg1
+    cx, cy, dx, dy = seg2
+    o1 = orient(ax, ay, bx, by, cx, cy)
+    o2 = orient(ax, ay, bx, by, dx, dy)
+    o3 = orient(cx, cy, dx, dy, ax, ay)
+    o4 = orient(cx, cy, dx, dy, bx, by)
+    if o1 != o2 and o3 != o4:
+        return True
+    if o1 == 0 and on_segment(ax, ay, bx, by, cx, cy): return True
+    if o2 == 0 and on_segment(ax, ay, bx, by, dx, dy): return True
+    if o3 == 0 and on_segment(cx, cy, dx, dy, ax, ay): return True
+    if o4 == 0 and on_segment(cx, cy, dx, dy, bx, by): return True
+    return False
+
+def solve(xs):
+    seg1, seg2 = xs
+    return segments_intersect(seg1, seg2)
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <array>
+
+int orient(long long ax, long long ay,
+           long long bx, long long by,
+           long long cx, long long cy) {
+    long long v = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    if (v > 0) return 1;
+    if (v < 0) return -1;
+    return 0;
+}
+
+bool on_segment(long long ax, long long ay,
+                long long bx, long long by,
+                long long px, long long py) {
+    return std::min(ax, bx) <= px && px <= std::max(ax, bx)
+        && std::min(ay, by) <= py && py <= std::max(ay, by);
+}
+
+bool segments_intersect(std::array<long long, 4> s1,
+                        std::array<long long, 4> s2) {
+    auto [ax, ay, bx, by] = s1;
+    auto [cx, cy, dx, dy] = s2;
+    int o1 = orient(ax, ay, bx, by, cx, cy);
+    int o2 = orient(ax, ay, bx, by, dx, dy);
+    int o3 = orient(cx, cy, dx, dy, ax, ay);
+    int o4 = orient(cx, cy, dx, dy, bx, by);
+    if (o1 != o2 && o3 != o4) return true;
+    if (o1 == 0 && on_segment(ax, ay, bx, by, cx, cy)) return true;
+    if (o2 == 0 && on_segment(ax, ay, bx, by, dx, dy)) return true;
+    if (o3 == 0 && on_segment(cx, cy, dx, dy, ax, ay)) return true;
+    if (o4 == 0 && on_segment(cx, cy, dx, dy, bx, by)) return true;
+    return false;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Do two segments intersect?"
+  tests={[
+    { input: [[0, 0, 4, 4], [0, 4, 4, 0]], expected: true },
+    { input: [[0, 0, 1, 1], [2, 2, 3, 3]], expected: false },
+    { input: [[0, 0, 2, 2], [1, 1, 3, 3]], expected: true },
+    { input: [[0, 0, 1, 0], [2, 0, 3, 0]], expected: false },
+  ]}
+>
+{`
+def solve(xs):
+    seg1, seg2 = xs
+    ax, ay, bx, by = seg1
+    cx, cy, dx, dy = seg2
+    def orient(px, py, qx, qy, rx, ry):
+        v = (qx - px) * (ry - py) - (qy - py) * (rx - px)
+        return (v > 0) - (v < 0)
+    def on_seg(px, py, qx, qy, rx, ry):
+        return min(px, qx) <= rx <= max(px, qx) and min(py, qy) <= ry <= max(py, qy)
+    o1 = orient(ax, ay, bx, by, cx, cy)
+    o2 = orient(ax, ay, bx, by, dx, dy)
+    o3 = orient(cx, cy, dx, dy, ax, ay)
+    o4 = orient(cx, cy, dx, dy, bx, by)
+    if o1 != o2 and o3 != o4:
+        return True
+    if o1 == 0 and on_seg(ax, ay, bx, by, cx, cy): return True
+    if o2 == 0 and on_seg(ax, ay, bx, by, dx, dy): return True
+    if o3 == 0 and on_seg(cx, cy, dx, dy, ax, ay): return True
+    if o4 == 0 and on_seg(cx, cy, dx, dy, bx, by): return True
+    return False
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(1)$. The predicate evaluates four cross products and at most four
+bounding-box checks, independent of any input size.
+
+### Space analysis
+
+$O(1)$ auxiliary. Only a handful of integer temporaries are used; the
+input segments are not copied.
+
+### Proof of correctness
+
+The cross product of $B - A$ with $P - A$ is positive exactly when $P$
+lies to the left of the directed line through $A$ and $B$, negative when
+on the right, and zero when collinear. Two segments $AB$ and $CD$ that
+are not collinear with each other cross if and only if $C$ and $D$
+straddle line $AB$ and $A$ and $B$ straddle line $CD$; this is the
+classical straddling lemma, which follows by continuity of linear
+functions along each segment. The general-position check captures exactly
+this condition. For the degenerate case where some orientation is zero,
+an endpoint lies on the line through the other segment, and the segments
+overlap if and only if that endpoint also lies inside the bounding box of
+the other segment. The four collinear sub-checks cover all such cases,
+giving a complete and exact decision procedure under exact integer
+arithmetic.
+
+## Extensions
+
+## Applications
+
+### Leetcode 1353
+
+- [Leetcode 1353](https://leetcode.com/problems/maximum-number-of-events-that-can-be-attended/)
+
+This problem is a good example of using 1D line sweep.
+
+<details>
+<summary>Intuition</summary>
+
+Notice that what ever you do, you must always select the event that can be attended with earliest ending time.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+Here we use `lp` to denote the current line location $x$ axis. We use `pq` to store the active events. `ie` is the index of the current unchecked event. `cnt` is the number of events that can be attended.
+
+```python
+class Solution:
+    def maxEvents(self, events: List[List[int]]) -> int:
+        events.sort()
+        # print(events)
+        # line-sweep!!!
+        lp=ie=cnt=0
+        pq=[]
+        n=len(events)
+        while ie<n or pq:
+            if len(pq)==0:
+                lp=events[ie][0]
+            # insert
+            while ie<n and events[ie][0]<=lp:
+                # insert end, start
+                heappush(pq,(events[ie][1],events[ie][0]))
+                ie+=1
+            # pop expired event
+            while len(pq)>0 and pq[0][0]<lp:
+                heappop(pq)
+            # attend the optimal event
+            if len(pq)>0:
+                heappop(pq)
+                cnt+=1
+            lp+=1
+        return cnt
+
+```
+
+</details>
+
+## References
+
+- [Computational Geometry](https://cimec.org.ar/foswiki/pub/Main/Cimec/GeometriaComputacional/DeBerg_-_Computational_Geometry_-_Algorithms_and_Applications_2e.pdf)
+- de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 2 (Line Segment Intersection).
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Section 33.1 (Line-segment properties).
+- [cp-algorithms — Check if two segments intersect](https://cp-algorithms.com/geometry/check-segments-intersection.html)
+- Bentley, J. L., and Ottmann, T. A. "Algorithms for reporting and counting geometric intersections". *IEEE Transactions on Computers*, C-28(9), 1979.

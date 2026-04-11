@@ -4,19 +4,60 @@ sidebar_position: 1
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
-# Breath First Search
+# Breadth First Search
 
 The breath first search is a graph search algorithm that explores the graph level by level.
 
 It is especially useful when you are required to visit all the nodes in the graph or grid.
 
-## Codes
+Breadth first search, or BFS, explores a graph layer by layer. Starting from
+a source vertex, it visits every vertex at distance one, then every vertex at
+distance two, and so on — each vertex is enqueued the first time it is seen
+and never revisited. A first-in, first-out queue is the only data structure
+needed to enforce this layering.
 
-Here we use grid search as an example.
+Because BFS expands vertices in non-decreasing order of their hop-count from
+the source, it computes single-source shortest paths in any unweighted graph
+for free. The same template shows up under many disguises: flood fill on a
+grid, level-order traversal of a tree, the Pacific/Atlantic water-flow
+problem, and the zero-weight relaxation step inside 0-1 BFS and Dijkstra.
+
+In Python we use `collections.deque` so that `popleft` is $O(1)$. In C++ we
+use `std::queue` over a `std::vector`-based adjacency list.
+
+## Codes
 
 <Tabs>
 <TabItem value="Python" label="Python">
+
+```python
+from collections import deque
+
+def solve(xs):
+    """xs = [n, edges, source]; returns BFS order from source."""
+    n, edges, source = xs
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    order = []
+    seen = [False] * n
+    seen[source] = True
+    q = deque([source])
+    while q:
+        u = q.popleft()
+        order.append(u)
+        for v in adj[u]:
+            if not seen[v]:
+                seen[v] = True
+                q.append(v)
+    return order
+```
+
+Here we use grid search as an example.
+
 ```python
 def bfs(mp):
     ud=[]
@@ -37,8 +78,114 @@ def bfs(mp):
                     ud.append((na,nb))
                     mp.add((na,nb))
 ```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <queue>
+#include <vector>
+
+std::vector<int> bfs(int n,
+                     const std::vector<std::pair<int,int>>& edges,
+                     int source) {
+    std::vector<std::vector<int>> adj(n);
+    for (auto [u, v] : edges) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+    std::vector<int> order;
+    std::vector<char> seen(n, 0);
+    std::queue<int> q;
+    q.push(source);
+    seen[source] = 1;
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        order.push_back(u);
+        for (int v : adj[u]) {
+            if (!seen[v]) {
+                seen[v] = 1;
+                q.push(v);
+            }
+        }
+    }
+    return order;
+}
+```
+
 </TabItem>
 </Tabs>
+
+## Example
+
+<PyListSnippet
+  title="BFS traversal order from a source"
+  tests={[
+    { input: [6, [[0,1],[0,2],[1,3],[2,4],[3,5]], 0], expected: [0, 1, 2, 3, 4, 5] },
+    { input: [4, [[0,1],[1,2],[2,3]], 0], expected: [0, 1, 2, 3] },
+    { input: [3, [], 1], expected: [1] },
+  ]}
+>
+{`
+from collections import deque
+
+def solve(xs):
+    n, edges, source = xs
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    order = []
+    seen = [False] * n
+    seen[source] = True
+    q = deque([source])
+    while q:
+        u = q.popleft()
+        order.append(u)
+        for v in adj[u]:
+            if not seen[v]:
+                seen[v] = True
+                q.append(v)
+    return order
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(V + E)$. Every vertex is enqueued and dequeued exactly once, costing
+$O(V)$, and across the whole traversal each edge is inspected at most twice
+(once from each endpoint in an undirected graph), costing $O(E)$.
+
+### Space analysis
+
+$O(V)$ auxiliary. The visited array, the queue, and the output order list
+each hold at most $V$ entries. The adjacency list itself is $O(V + E)$ but
+is part of the input representation, not extra working memory.
+
+### Proof of correctness
+
+We prove BFS discovers every vertex reachable from the source and labels it
+with the correct shortest-path hop-count. Let $d(u)$ denote the true
+unweighted distance from the source $s$ to $u$, and let $b(u)$ be the layer
+in which BFS first enqueues $u$ (with $b(s) = 0$).
+
+*Claim: $b(u) = d(u)$ for every reachable $u$, and vertices are enqueued in
+non-decreasing order of $b$.*
+
+By induction on $d(u)$. Base: $b(s) = 0 = d(s)$. Step: suppose the claim
+holds for all vertices with true distance at most $k$. Any vertex $u$ with
+$d(u) = k+1$ has some neighbor $w$ with $d(w) = k$; by hypothesis $w$ was
+enqueued at layer $k$ and is dequeued before any layer-$(k+1)$ vertex, at
+which point $u$ — if not already seen — is pushed with $b(u) = k+1$. Since
+the queue is FIFO and we only ever add vertices with $b$ equal to the
+current front plus zero or one, the ordering property is preserved.
+Conversely $b(u) \ge d(u)$ always holds because enqueuing $u$ requires
+walking a path of length $b(u)$ from $s$. Hence $b(u) = d(u)$. $\blacksquare$
+
+## Extensions
 
 ## Applications
 
@@ -100,3 +247,9 @@ class Solution:
         return res
 ```
 </details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 22.2 (Breadth-First Search).
+- [cp-algorithms — Breadth-first search](https://cp-algorithms.com/graph/breadth-first-search.html)
+- Moore, E. F. "The shortest path through a maze." *Proc. Int. Symp. Switching Theory*, 1959.

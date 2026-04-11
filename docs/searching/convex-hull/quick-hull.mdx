@@ -1,0 +1,252 @@
+---
+sidebar_position: 4
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Quick Hull
+
+Quick hull is to convex hulls what quick sort is to sorting: a
+divide-and-conquer procedure that splits work around a pivot and recurses on
+the pieces. Start with the leftmost and rightmost points, which are
+guaranteed to lie on the hull, and draw the line between them. Every other
+point sits in one of the two half-planes. For each half-plane, find the
+point farthest from the dividing line — that point is also on the hull, and
+the triangle it forms with the two endpoints discards all interior points.
+Recurse on the two new edges.
+
+On well-behaved inputs the expected running time is $O(n \log n)$, but like
+quick sort the algorithm is not worst-case optimal: adversarial point sets
+(for example, many points on a circle) can push it to $O(n^2)$. In practice
+quick hull is one of the fastest hull implementations.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """Quick hull. xs is a list of [x, y] points. Returns the convex hull
+    in CCW order starting from the bottom-most (then leftmost) vertex."""
+    pts = [tuple(p) for p in {tuple(p) for p in xs}]
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def dist_sq_to_line(a, b, p):
+        # Proportional to distance from p to line ab; signed by side.
+        return abs(cross(a, b, p))
+
+    # Leftmost and rightmost by x, tiebreak by y.
+    a = min(pts, key=lambda p: (p[0], p[1]))
+    b = max(pts, key=lambda p: (p[0], p[1]))
+
+    def find_hull(points, p, q, acc):
+        # Points are strictly left of pq (cross(p,q,r) > 0).
+        if not points:
+            return
+        # Farthest point from line pq.
+        far = max(points, key=lambda r: dist_sq_to_line(p, q, r))
+        acc.append(far)
+        left_of_pf = [r for r in points if cross(p, far, r) > 0]
+        left_of_fq = [r for r in points if cross(far, q, r) > 0]
+        find_hull(left_of_pf, p, far, acc)
+        find_hull(left_of_fq, far, q, acc)
+
+    upper_side = [r for r in pts if cross(a, b, r) > 0]
+    lower_side = [r for r in pts if cross(b, a, r) > 0]
+    upper = []
+    lower = []
+    find_hull(upper_side, a, b, upper)
+    find_hull(lower_side, b, a, lower)
+
+    # Walk from a to b along upper, then from b to a along lower.
+    # Sort upper points by their projection onto ab and lower in reverse.
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    def proj(r):
+        return (r[0] - a[0]) * dx + (r[1] - a[1]) * dy
+
+    hull = [a] + sorted(upper, key=proj) + [b] + sorted(lower, key=proj, reverse=True)
+    # Rebuild with a sanity pass to guarantee strict CCW convexity and
+    # rotate to canonical start.
+    def monotone(points):
+        pts2 = sorted(set(points))
+        lower2 = []
+        for p in pts2:
+            while len(lower2) >= 2 and cross(lower2[-2], lower2[-1], p) <= 0:
+                lower2.pop()
+            lower2.append(p)
+        upper2 = []
+        for p in reversed(pts2):
+            while len(upper2) >= 2 and cross(upper2[-2], upper2[-1], p) <= 0:
+                upper2.pop()
+            upper2.append(p)
+        return lower2[:-1] + upper2[:-1]
+
+    hull = monotone(hull)
+    start = min(range(len(hull)), key=lambda i: (hull[i][1], hull[i][0]))
+    hull = hull[start:] + hull[:start]
+    return [list(p) for p in hull]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+#include <array>
+#include <algorithm>
+#include <cmath>
+
+using Point = std::array<double, 2>;
+
+static double cross(const Point& o, const Point& a, const Point& b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+}
+
+static void find_hull(const std::vector<Point>& pts, Point p, Point q,
+                      std::vector<Point>& acc) {
+    if (pts.empty()) return;
+    Point far = pts[0];
+    double best = std::abs(cross(p, q, far));
+    for (const auto& r : pts) {
+        double d = std::abs(cross(p, q, r));
+        if (d > best) { best = d; far = r; }
+    }
+    acc.push_back(far);
+    std::vector<Point> left_pf, left_fq;
+    for (const auto& r : pts) {
+        if (cross(p, far, r) > 0) left_pf.push_back(r);
+        else if (cross(far, q, r) > 0) left_fq.push_back(r);
+    }
+    find_hull(left_pf, p, far, acc);
+    find_hull(left_fq, far, q, acc);
+}
+
+std::vector<Point> quick_hull(std::vector<Point> pts) {
+    if (pts.size() <= 1) return pts;
+    Point a = *std::min_element(pts.begin(), pts.end());
+    Point b = *std::max_element(pts.begin(), pts.end());
+
+    std::vector<Point> upper_side, lower_side;
+    for (const auto& r : pts) {
+        double c = cross(a, b, r);
+        if (c > 0) upper_side.push_back(r);
+        else if (c < 0) lower_side.push_back(r);
+    }
+    std::vector<Point> hull{a, b};
+    find_hull(upper_side, a, b, hull);
+    find_hull(lower_side, b, a, hull);
+    return hull;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Quick hull"
+  tests={[
+    { input: [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]], expected: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+    { input: [[0, 0], [4, 0], [4, 4], [0, 4], [2, 2]], expected: [[0, 0], [4, 0], [4, 4], [0, 4]] },
+    { input: [[0, 0], [2, 0], [1, 2]], expected: [[0, 0], [2, 0], [1, 2]] },
+  ]}
+>
+{`
+def solve(xs):
+    pts = list({tuple(p) for p in xs})
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def find_hull(points, p, q, acc):
+        if not points:
+            return
+        far = max(points, key=lambda r: abs(cross(p, q, r)))
+        acc.append(far)
+        left_pf = [r for r in points if cross(p, far, r) > 0]
+        left_fq = [r for r in points if cross(far, q, r) > 0]
+        find_hull(left_pf, p, far, acc)
+        find_hull(left_fq, far, q, acc)
+
+    a = min(pts)
+    b = max(pts)
+    upper_side = [r for r in pts if cross(a, b, r) > 0]
+    lower_side = [r for r in pts if cross(b, a, r) > 0]
+    bag = [a, b]
+    find_hull(upper_side, a, b, bag)
+    find_hull(lower_side, b, a, bag)
+
+    # Clean up by running monotone chain on the collected hull vertices.
+    pts2 = sorted(set(bag))
+    if len(pts2) <= 1:
+        return [list(p) for p in pts2]
+    lower2 = []
+    for p in pts2:
+        while len(lower2) >= 2 and cross(lower2[-2], lower2[-1], p) <= 0:
+            lower2.pop()
+        lower2.append(p)
+    upper2 = []
+    for p in reversed(pts2):
+        while len(upper2) >= 2 and cross(upper2[-2], upper2[-1], p) <= 0:
+            upper2.pop()
+        upper2.append(p)
+    hull = lower2[:-1] + upper2[:-1]
+    start = min(range(len(hull)), key=lambda i: (hull[i][1], hull[i][0]))
+    hull = hull[start:] + hull[:start]
+    return [list(p) for p in hull]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n \log n)$ expected on random or well-separated inputs and $O(n^2)$ in
+the worst case. The recurrence looks like quick sort's: on average each
+recursive call discards a constant fraction of the remaining points, but a
+pathological distribution can keep all points on one side of every split.
+
+### Space analysis
+
+$O(n)$ for the candidate buckets at each recursion level plus
+$O(\log n)$ to $O(n)$ stack depth depending on balance. The output hull
+itself is $O(h)$.
+
+### Proof of correctness
+
+Every point returned lies on the hull because each such point is the
+farthest from a directed chord whose endpoints are already known to be
+hull vertices — the farthest point from a supporting line is itself a
+supporting vertex. Conversely, no hull vertex is ever missed: consider any
+hull vertex $v$. It lies strictly to one side of the starting chord $ab$,
+so it enters the recursion on that side. At each recursive step the
+farthest point $f$ partitions the current wedge into two sub-wedges along
+segments $pf$ and $fq$; the hull vertex $v$ either equals $f$ or lies
+strictly to the left of one of the two sub-chords, so it is retained in a
+deeper recursive call. Since the number of candidate points strictly
+decreases each time, the recursion terminates and eventually places $v$
+into the collected hull set.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Barber, C. B., Dobkin, D. P., & Huhdanpaa, H. (1996). "The Quickhull algorithm for convex hulls." *ACM Transactions on Mathematical Software*, 22(4), 469-483.
+- Eddy, W. F. (1977). "A new convex hull algorithm for planar sets." *ACM Transactions on Mathematical Software*, 3(4), 398-403.
+- Preparata, F. P., & Shamos, M. I. *Computational Geometry: An Introduction*. Springer, 1985.
+- [Qhull project](http://www.qhull.org/)

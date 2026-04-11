@@ -1,0 +1,278 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Tarjan's Algorithm
+
+Tarjan's algorithm finds all strongly connected components of a directed
+graph in a *single* depth first search. Where Kosaraju needs two passes
+and the transpose graph, Tarjan threads two numbers through one DFS and
+reads the components off a side stack as soon as they are complete.
+
+For each vertex the DFS records two values: its *index*, the order in
+which the vertex was first visited, and its *lowlink*, the smallest index
+reachable from the vertex's subtree through tree edges plus at most one
+back edge to a vertex still on the DFS stack. A vertex whose lowlink
+equals its index is the root of an SCC — everything sitting above it on
+the auxiliary stack, which holds vertices that have started DFS but have
+not yet been assigned to a component, constitutes that SCC.
+
+The trick that makes this work in one pass is the on-stack check: when
+the DFS encounters an edge to a vertex that is on the stack, we pull that
+vertex's index into our lowlink; when we encounter an edge to a vertex
+already assigned to a finished component, we ignore it. This matches the
+behaviour of "reachable through one back edge to a vertex in the current
+DFS tree".
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs = [n, edges]; edges are directed [u, v].
+    Returns list of SCCs, each a sorted list of vertices."""
+    n, edges = xs
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+
+    index_of = [-1] * n
+    lowlink  = [0] * n
+    on_stack = [False] * n
+    stack    = []          # tarjan stack
+    sccs     = []
+    timer    = [0]
+
+    def strongconnect(root):
+        # iterative DFS with explicit frames
+        work = [(root, 0)]
+        index_of[root] = lowlink[root] = timer[0]
+        timer[0] += 1
+        stack.append(root)
+        on_stack[root] = True
+
+        while work:
+            u, i = work[-1]
+            if i < len(adj[u]):
+                work[-1] = (u, i + 1)
+                v = adj[u][i]
+                if index_of[v] == -1:
+                    index_of[v] = lowlink[v] = timer[0]
+                    timer[0] += 1
+                    stack.append(v)
+                    on_stack[v] = True
+                    work.append((v, 0))
+                elif on_stack[v]:
+                    if index_of[v] < lowlink[u]:
+                        lowlink[u] = index_of[v]
+            else:
+                if lowlink[u] == index_of[u]:
+                    comp = []
+                    while True:
+                        w = stack.pop()
+                        on_stack[w] = False
+                        comp.append(w)
+                        if w == u:
+                            break
+                    sccs.append(sorted(comp))
+                work.pop()
+                if work:
+                    p = work[-1][0]
+                    if lowlink[u] < lowlink[p]:
+                        lowlink[p] = lowlink[u]
+
+    for s in range(n):
+        if index_of[s] == -1:
+            strongconnect(s)
+    return sccs
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <vector>
+
+struct Tarjan {
+    int n, timer = 0;
+    std::vector<std::vector<int>> adj;
+    std::vector<int> idx, low;
+    std::vector<char> on_stack;
+    std::vector<int> stk;
+    std::vector<std::vector<int>> sccs;
+
+    Tarjan(int n_, const std::vector<std::pair<int,int>>& edges)
+        : n(n_), adj(n_), idx(n_, -1), low(n_, 0), on_stack(n_, 0) {
+        for (auto [u, v] : edges) adj[u].push_back(v);
+    }
+
+    void strongconnect(int u) {
+        idx[u] = low[u] = timer++;
+        stk.push_back(u);
+        on_stack[u] = 1;
+        for (int v : adj[u]) {
+            if (idx[v] == -1) {
+                strongconnect(v);
+                low[u] = std::min(low[u], low[v]);
+            } else if (on_stack[v]) {
+                low[u] = std::min(low[u], idx[v]);
+            }
+        }
+        if (low[u] == idx[u]) {
+            std::vector<int> comp;
+            while (true) {
+                int w = stk.back(); stk.pop_back();
+                on_stack[w] = 0;
+                comp.push_back(w);
+                if (w == u) break;
+            }
+            std::sort(comp.begin(), comp.end());
+            sccs.push_back(std::move(comp));
+        }
+    }
+
+    std::vector<std::vector<int>> run() {
+        for (int s = 0; s < n; ++s)
+            if (idx[s] == -1) strongconnect(s);
+        return sccs;
+    }
+};
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Strongly connected components via Tarjan"
+  tests={[
+    { input: [5, [[0,1],[1,2],[2,0],[1,3],[3,4]]], expected: [[4], [3], [0, 1, 2]] },
+    { input: [4, [[0,1],[1,2],[2,3],[3,0]]], expected: [[0, 1, 2, 3]] },
+    { input: [3, [[0,1],[1,2]]], expected: [[2], [1], [0]] },
+  ]}
+>
+{`
+def solve(xs):
+    n, edges = xs
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+    index_of = [-1] * n
+    lowlink  = [0] * n
+    on_stack = [False] * n
+    stack    = []
+    sccs     = []
+    timer    = [0]
+
+    def strongconnect(root):
+        work = [(root, 0)]
+        index_of[root] = lowlink[root] = timer[0]
+        timer[0] += 1
+        stack.append(root)
+        on_stack[root] = True
+        while work:
+            u, i = work[-1]
+            if i < len(adj[u]):
+                work[-1] = (u, i + 1)
+                v = adj[u][i]
+                if index_of[v] == -1:
+                    index_of[v] = lowlink[v] = timer[0]
+                    timer[0] += 1
+                    stack.append(v)
+                    on_stack[v] = True
+                    work.append((v, 0))
+                elif on_stack[v]:
+                    if index_of[v] < lowlink[u]:
+                        lowlink[u] = index_of[v]
+            else:
+                if lowlink[u] == index_of[u]:
+                    comp = []
+                    while True:
+                        w = stack.pop()
+                        on_stack[w] = False
+                        comp.append(w)
+                        if w == u:
+                            break
+                    sccs.append(sorted(comp))
+                work.pop()
+                if work:
+                    p = work[-1][0]
+                    if lowlink[u] < lowlink[p]:
+                        lowlink[p] = lowlink[u]
+
+    for s in range(n):
+        if index_of[s] == -1:
+            strongconnect(s)
+    return sccs
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(V + E)$. Each vertex is pushed onto the DFS stack exactly once and
+popped when its component closes; each edge is examined once. The
+lowlink update is constant time per edge.
+
+### Space analysis
+
+$O(V)$. We store the index, lowlink, and on-stack flag for every vertex,
+plus the explicit DFS work stack and the auxiliary Tarjan stack, each of
+which never holds more than $V$ vertices.
+
+### Proof of correctness
+
+The two claims that need proving are (a) every SCC is output exactly
+once, and (b) the set of vertices popped when the algorithm reports an
+SCC is precisely one SCC.
+
+Define the *root* of an SCC to be the vertex of that SCC with the
+smallest DFS index. We show that when DFS finishes processing a root
+$u$, its lowlink equals its index, and at that moment every vertex of
+the SCC is on the Tarjan stack above $u$. Write $I(u)$ for the DFS
+index of $u$ and $L(u)$ for its lowlink.
+
+*Why lowlink equals index at the root.* Any vertex $v$ reachable from
+$u$ through tree edges plus at most one back edge either lies in the
+same SCC — in which case it was pushed onto the Tarjan stack after $u$
+and has $I(v) \ge I(u)$ — or lies in a different SCC. In the latter
+case the DFS either has not yet visited $v$ (and will finish it as
+part of a descendant subtree before returning to $u$, popping it off
+the Tarjan stack first because it is the root of its own SCC) or $v$
+has already been assigned to a finished SCC, in which case the
+algorithm ignores it. Hence the minimum index propagated up to $u$ is
+$I(u)$ itself, so $L(u) = I(u)$.
+
+*Why non-roots see a smaller lowlink.* If $v$ is a non-root vertex of
+its SCC, then there is a path from $v$ back to the root $u$ inside the
+SCC, which uses at most one back edge (any cycle contains at least one
+back edge in a DFS tree). That back edge lowers $v$'s lowlink to at
+most $I(u) < I(v)$, so $L(v) \ne I(v)$ and $v$ is not flagged as a
+root.
+
+*Stack contents at pop time.* The Tarjan stack holds, in DFS-start
+order, every visited vertex that has not yet been assigned to a
+component. When DFS returns from the root $u$, all descendants of $u$
+that share its SCC are still on the stack above $u$ (they have not been
+claimed by any earlier root because $u$ has the smallest index in the
+SCC), so popping until $u$ yields exactly the SCC. $\blacksquare$
+
+## Extensions
+
+## Applications
+
+## References
+
+- Tarjan, Robert E. "Depth-first search and linear graph algorithms." *SIAM Journal on Computing*, 1(2):146-160, 1972.
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 22.5.
+- [cp-algorithms — Strongly connected components, Tarjan](https://cp-algorithms.com/graph/strongly-connected-components.html)

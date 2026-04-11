@@ -4,6 +4,7 @@ sidebar_position: 2
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Double array dynamic programming
 
@@ -13,10 +14,31 @@ A common example is the robber house problem. You can always see some "robber" w
 
 In such cases, using two arrays to store the intermediate results is a good idea.
 
+More generally, two-dimensional dynamic programming shows up whenever the
+optimal structure depends on two independent indices — typically a pair of
+positions in two sequences, or a position paired with a capacity/mode. A
+canonical example is the **longest common subsequence** (LCS): given two
+strings s1 and s2, find the length of the longest sequence that appears in
+both as a subsequence (not necessarily contiguous).
+
+Define dp[i][j] as the LCS length of the prefixes s1[:i] and s2[:j]. The
+recurrence is
+
+- dp[0][j] = dp[i][0] = 0 for all i, j (empty prefix),
+- if s1[i-1] equals s2[j-1] then dp[i][j] = dp[i-1][j-1] + 1,
+- otherwise dp[i][j] = max(dp[i-1][j], dp[i][j-1]).
+
+The answer is dp[len(s1)][len(s2)]. The table is filled row by row, and each
+cell is computed in constant time from three already-filled neighbors,
+yielding the $O(m n)$ bound below.
+
 ## Codes
 
 <Tabs>
 <TabItem value="Python" label="Python">
+
+House-robber style double-array DP:
+
 ```python
 def robber(nums: List[int]) -> int:
     n=len(nums)
@@ -31,8 +53,127 @@ def robber(nums: List[int]) -> int:
         dp[i]=max(dp[i-1],dp[i-2]+nums[i])
     return dp[n-1]
 ```
+
+LCS length with a full 2D table:
+
+```python
+def solve(xs):
+    """xs is [s1, s2]; return the length of the longest common subsequence."""
+    s1, s2 = xs
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    return dp[m][n]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <string>
+#include <vector>
+
+int lcs_length(const std::string& s1, const std::string& s2) {
+    int m = static_cast<int>(s1.size());
+    int n = static_cast<int>(s2.size());
+    std::vector<std::vector<int>> dp(m + 1, std::vector<int>(n + 1, 0));
+    for (int i = 1; i <= m; ++i) {
+        for (int j = 1; j <= n; ++j) {
+            if (s1[i - 1] == s2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = std::max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+    return dp[m][n];
+}
+```
+
 </TabItem>
 </Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Longest common subsequence length"
+  tests={[
+    { input: ["abcde", "ace"], expected: 3 },
+    { input: ["abc", "abc"], expected: 3 },
+    { input: ["abc", "def"], expected: 0 },
+    { input: ["", "anything"], expected: 0 },
+  ]}
+>
+{`
+def solve(xs):
+    s1, s2 = xs
+    m, n = len(s1), len(s2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i - 1] == s2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    return dp[m][n]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(m n)$, where m and n are the lengths of the two strings. Every cell of
+the (m+1) by (n+1) table is computed exactly once, and each cell does
+constant work (one comparison and one max of three known cells).
+
+### Space analysis
+
+$O(m n)$ for the full table. This can be reduced to $O(\min(m, n))$ by
+keeping only the previous row, because the recurrence only references
+dp[i-1][j-1], dp[i-1][j], and dp[i][j-1]; the reduction is a standard rolling
+array optimization and does not change the answer.
+
+### Proof of correctness
+
+We prove by induction on (i, j) in lexicographic order that dp[i][j] equals
+the length of the longest common subsequence of s1[:i] and s2[:j].
+
+Base case: dp[0][j] = dp[i][0] = 0, because at least one of the two
+prefixes is empty and the empty subsequence is the only common
+subsequence.
+
+Inductive step: assume the claim holds for all pairs (i', j') that are
+lexicographically smaller than (i, j). Let L be the true LCS length of
+s1[:i] and s2[:j].
+
+Case A (s1[i-1] equals s2[j-1]): any optimal LCS either uses this matched
+character or not. If it does, removing it gives an LCS of s1[:i-1] and
+s2[:j-1] of length L - 1, so by induction L - 1 is less than or equal to
+dp[i-1][j-1], hence L is less than or equal to dp[i-1][j-1] + 1. If it does
+not, then L equals the LCS of s1[:i-1] and s2[:j] or of s1[:i] and s2[:j-1],
+which by induction is at most max(dp[i-1][j], dp[i][j-1]), and that is at
+most dp[i-1][j-1] + 1 because extending by one matched character can only
+increase the LCS by one. Conversely, we can achieve dp[i-1][j-1] + 1 by
+appending the matched character to an optimal LCS of the shorter prefixes,
+so L equals dp[i-1][j-1] + 1.
+
+Case B (s1[i-1] does not equal s2[j-1]): an optimal LCS of s1[:i] and s2[:j]
+cannot end with both characters simultaneously, so it is an LCS of either
+s1[:i-1] and s2[:j] or s1[:i] and s2[:j-1]. By induction this maximum equals
+max(dp[i-1][j], dp[i][j-1]) and that value is achievable.
+
+In both cases dp[i][j] = L, completing the induction. The final answer is
+dp[m][n].
+
+## Extensions
 
 ## Applications
 
@@ -70,3 +211,8 @@ class Solution:
 ```
 
 </details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 15 (Dynamic Programming), section on the longest common subsequence.
+- [cp-algorithms — Longest common subsequence](https://cp-algorithms.com/sequences/longest_common_subsequence.html)

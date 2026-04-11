@@ -1,0 +1,207 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Priority Queue
+
+A *priority queue* is an abstract data type that supports inserting elements
+with associated priorities and extracting the element of minimum (or maximum)
+priority. The standard implementation is a binary heap stored in an array:
+the parent of index $i$ is at $\lfloor (i-1)/2 \rfloor$ and its children are
+at $2i+1$ and $2i+2$, so sift-up and sift-down each touch only $O(\log n)$
+slots.
+
+The example below exposes a tiny min-heap class with `push` and `pop`, then
+plays back a script of operations. Each `pop` records the extracted minimum,
+and the final list of popped values is returned.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+class MinPQ:
+    def __init__(self):
+        self.h = []
+
+    def push(self, v):
+        self.h.append(v)
+        i = len(self.h) - 1
+        while i > 0:
+            p = (i - 1) // 2
+            if self.h[p] <= self.h[i]:
+                break
+            self.h[p], self.h[i] = self.h[i], self.h[p]
+            i = p
+
+    def pop(self):
+        top = self.h[0]
+        last = self.h.pop()
+        if self.h:
+            self.h[0] = last
+            n = len(self.h)
+            i = 0
+            while True:
+                l, r = 2 * i + 1, 2 * i + 2
+                s = i
+                if l < n and self.h[l] < self.h[s]:
+                    s = l
+                if r < n and self.h[r] < self.h[s]:
+                    s = r
+                if s == i:
+                    break
+                self.h[i], self.h[s] = self.h[s], self.h[i]
+                i = s
+        return top
+
+
+def solve(xs):
+    ops = xs
+    pq = MinPQ()
+    popped = []
+    for op in ops:
+        if op[0] == "push":
+            pq.push(op[1])
+        else:
+            popped.append(pq.pop())
+    return popped
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <queue>
+#include <string>
+#include <variant>
+#include <vector>
+
+struct Op {
+    std::string kind; // "push" or "pop"
+    int value;        // meaningful only when kind == "push"
+};
+
+std::vector<int> solve(const std::vector<Op>& ops) {
+    std::priority_queue<int, std::vector<int>, std::greater<int>> pq;
+    std::vector<int> popped;
+    for (const auto& op : ops) {
+        if (op.kind == "push") {
+            pq.push(op.value);
+        } else {
+            popped.push_back(pq.top());
+            pq.pop();
+        }
+    }
+    return popped;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Min priority queue operations"
+  tests={[
+    {
+      input: [["push", 5], ["push", 1], ["push", 3], ["pop"], ["pop"], ["push", 2], ["pop"]],
+      expected: [1, 3, 2],
+    },
+    {
+      input: [["push", 7], ["pop"]],
+      expected: [7],
+    },
+  ]}
+>
+{`
+class MinPQ:
+    def __init__(self):
+        self.h = []
+
+    def push(self, v):
+        self.h.append(v)
+        i = len(self.h) - 1
+        while i > 0:
+            p = (i - 1) // 2
+            if self.h[p] <= self.h[i]:
+                break
+            self.h[p], self.h[i] = self.h[i], self.h[p]
+            i = p
+
+    def pop(self):
+        top = self.h[0]
+        last = self.h.pop()
+        if self.h:
+            self.h[0] = last
+            n = len(self.h)
+            i = 0
+            while True:
+                l, r = 2 * i + 1, 2 * i + 2
+                s = i
+                if l < n and self.h[l] < self.h[s]:
+                    s = l
+                if r < n and self.h[r] < self.h[s]:
+                    s = r
+                if s == i:
+                    break
+                self.h[i], self.h[s] = self.h[s], self.h[i]
+                i = s
+        return top
+
+
+def solve(xs):
+    ops = xs
+    pq = MinPQ()
+    popped = []
+    for op in ops:
+        if op[0] == "push":
+            pq.push(op[1])
+        else:
+            popped.append(pq.pop())
+    return popped
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(\log n)$ per `push` and per `pop`, where $n$ is the current heap size.
+Sift-up on insertion and sift-down on extraction each walk at most one
+root-to-leaf path, and the heap is a complete binary tree of height
+$\lfloor \log_2 n \rfloor$.
+
+### Space analysis
+
+$O(n)$ total for the underlying array holding the heap. Each operation uses
+only $O(1)$ auxiliary space for index bookkeeping.
+
+### Proof of correctness
+
+Both operations preserve the min-heap invariant "every parent is less than
+or equal to both of its children". `push` appends the new value at the last
+array slot and sifts it up: the invariant can only be broken along the path
+from the new leaf to the root, and swapping a violating child-parent pair
+restores the invariant locally while possibly opening a new violation one
+step higher. The loop terminates when no violation exists or the root is
+reached. `pop` swaps the root with the last leaf, shrinks the heap by one,
+and sifts the new root down by always exchanging it with its smaller child
+until it is no greater than either — again each local exchange restores the
+invariant along the affected path and cannot break it elsewhere. Therefore
+`pop` always returns the minimum and the heap remains valid.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 6 (Heapsort and priority queues).
+- [cp-algorithms — Heap](https://cp-algorithms.com/data_structures/heap.html)

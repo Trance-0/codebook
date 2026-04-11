@@ -1,0 +1,136 @@
+---
+sidebar_position: 5
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Forward Star
+
+*Forward star* is a compressed adjacency representation for directed graphs
+that stores all out-edges in a single contiguous array, grouped by source
+vertex. A parallel `head` array records, for each vertex $u$, where its
+block of outgoing edges starts (and, implicitly, where it ends — at the
+start of the next vertex's block). The layout is essentially the same as
+CSR (compressed sparse row) for a sparse matrix.
+
+Compared with an adjacency list of per-vertex Python lists or C++ vectors,
+forward star is more cache-friendly and uses a single allocation. The
+function below builds the structure from `[n, edges]` and then demonstrates
+reading it back by returning the list of neighbours of vertex $0$.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    n, edges = xs
+    # Count out-degree per vertex.
+    deg = [0] * n
+    for u, _ in edges:
+        deg[u] += 1
+    # head[u] = start index of u's out-edges in the targets array.
+    head = [0] * (n + 1)
+    for u in range(n):
+        head[u + 1] = head[u] + deg[u]
+    targets = [0] * len(edges)
+    cursor = head[:]
+    for u, v in edges:
+        targets[cursor[u]] = v
+        cursor[u] += 1
+    # Demonstrate iteration: return neighbours of vertex 0.
+    return [targets[i] for i in range(head[0], head[1])]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <utility>
+#include <vector>
+
+std::vector<int> solve(int n, const std::vector<std::pair<int, int>>& edges) {
+    std::vector<int> head(n + 1, 0);
+    for (const auto& e : edges) head[e.first + 1]++;
+    for (int u = 0; u < n; ++u) head[u + 1] += head[u];
+    std::vector<int> targets(edges.size());
+    std::vector<int> cursor = head;
+    for (const auto& e : edges) {
+        targets[cursor[e.first]++] = e.second;
+    }
+    std::vector<int> nbrs;
+    for (int i = head[0]; i < head[1]; ++i) nbrs.push_back(targets[i]);
+    return nbrs;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Build forward star and list neighbours of vertex 0"
+  tests={[
+    { input: [4, [[0, 1], [0, 2], [1, 2], [2, 3], [0, 3]]], expected: [1, 2, 3] },
+    { input: [3, [[1, 2], [2, 0]]], expected: [] },
+    { input: [2, [[0, 1], [0, 1]]], expected: [1, 1] },
+  ]}
+>
+{`
+def solve(xs):
+    n, edges = xs
+    deg = [0] * n
+    for u, _ in edges:
+        deg[u] += 1
+    head = [0] * (n + 1)
+    for u in range(n):
+        head[u + 1] = head[u] + deg[u]
+    targets = [0] * len(edges)
+    cursor = head[:]
+    for u, v in edges:
+        targets[cursor[u]] = v
+        cursor[u] += 1
+    return [targets[i] for i in range(head[0], head[1])]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n + m)$ to build the structure from $n$ vertices and $m$ edges: one pass
+to count degrees, one prefix-sum pass to fill `head`, and one pass to place
+each edge at its slot. Iterating the out-neighbours of a single vertex $u$
+takes time proportional to its out-degree plus $O(1)$ overhead.
+
+### Space analysis
+
+$O(n + m)$ total: the `head` array has $n + 1$ entries and the `targets`
+array has exactly $m$ entries, one per edge. There is no per-vertex
+overhead beyond a single integer index.
+
+### Proof of correctness
+
+After the prefix-sum pass, `head[u]` equals the number of edges whose source
+is strictly less than $u$, so the block `targets[head[u] .. head[u+1])` is
+exactly the right size to hold `u`'s out-edges. The placement pass uses a
+mutable `cursor` seeded from `head`: each time an edge $(u, v)$ is placed,
+`cursor[u]` is incremented, so successive edges from the same source are
+written into consecutive slots without collisions. By construction
+`cursor[u]` ends at `head[u+1]`, so every slot is filled exactly once.
+Iteration over `targets[head[u] .. head[u+1])` therefore visits each
+out-neighbour of $u$ exactly once.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 10.
+- [cp-algorithms — Fenwick tree](https://cp-algorithms.com/data_structures/fenwick.html)

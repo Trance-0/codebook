@@ -4,6 +4,7 @@ sidebar_position: 2
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Two Pointer
 
@@ -13,10 +14,46 @@ Usually, we are given a array and we need to find a maximum or minimum subarray.
 
 The problem can usually be solved in $O(n)$ time, and can be separated into several subproblems. And the supproblem usually partially solved the subproblem.
 
+The two-pointer technique walks two indices through an array in a
+coordinated way so that each step either eliminates a left candidate or
+a right candidate, never both. When the input is sorted, the ordering
+lets us decide which pointer to move purely from the comparison at the
+current pair, which collapses what looks like a quadratic search into a
+single linear pass.
+
+The canonical instance is "two-sum on a sorted array": given a sorted
+array and a target $t$, find two indices whose values sum to $t$. Start
+one pointer at the left, one at the right, and compare the current sum
+against $t$ — move right inward to shrink the sum, move left inward to
+grow it. The `solve` function below takes `[sorted_nums, target]` and
+returns either the pair of indices or `[]`.
+
 ## Codes
 
 <Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs = [sorted_nums, target]. Return [i, j] with nums[i]+nums[j]==t."""
+    nums, target = xs
+    lo, hi = 0, len(nums) - 1
+    while lo < hi:
+        s = nums[lo] + nums[hi]
+        if s == target:
+            return [lo, hi]
+        if s < target:
+            lo += 1
+        else:
+            hi -= 1
+    return []
+```
+
+</TabItem>
+
 <TabItem value="C++" label="C++">
+
+Generic two-pointer sweep:
 
 ```cpp
 for(int l=0,r=0;l<n;l++){
@@ -27,8 +64,88 @@ for(int l=0,r=0;l<n;l++){
 }
 ```
 
+Two-sum on a sorted array:
+
+```cpp
+#include <vector>
+
+std::vector<int> two_sum_sorted(const std::vector<int>& nums, int target) {
+    int lo = 0, hi = (int)nums.size() - 1;
+    while (lo < hi) {
+        int s = nums[lo] + nums[hi];
+        if (s == target) return {lo, hi};
+        if (s < target) ++lo;
+        else            --hi;
+    }
+    return {};
+}
+```
+
 </TabItem>
 </Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Two-sum on a sorted array"
+  tests={[
+    { input: [[1, 2, 3, 4, 6], 6], expected: [1, 4] },
+    { input: [[2, 3, 4], 6], expected: [0, 2] },
+    { input: [[1, 2, 3], 7], expected: [] },
+    { input: [[-3, 0, 3, 5], 0], expected: [0, 2] },
+  ]}
+>
+{`
+def solve(xs):
+    nums, target = xs
+    lo, hi = 0, len(nums) - 1
+    while lo < hi:
+        s = nums[lo] + nums[hi]
+        if s == target:
+            return [lo, hi]
+        if s < target:
+            lo += 1
+        else:
+            hi -= 1
+    return []
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n)$. Each iteration moves exactly one of the two pointers toward the
+other, so after at most $n - 1$ steps they meet and the loop terminates.
+
+### Space analysis
+
+$O(1)$ auxiliary. Only the two integer indices are kept; the input array
+is read but not copied.
+
+### Proof of correctness
+
+Let $A$ be the sorted input array of length $n$ and $t$ the target. We
+claim the loop invariant "if there is a solution $(i, j)$ with $i < j$,
+then $lo \le i$ and $j \le hi$". Initially $lo = 0$ and $hi = n - 1$, so
+any valid pair is trivially bracketed.
+
+Assume the invariant holds before an iteration. Consider the three
+cases:
+
+- If $A[lo] + A[hi] = t$, we return the pair immediately — correct.
+- If $A[lo] + A[hi] < t$, then for every index $j' \le hi$ we have
+  $A[lo] + A[j'] \le A[lo] + A[hi] < t$, so $lo$ cannot be the left
+  index of any solution. Incrementing $lo$ preserves the invariant.
+- If $A[lo] + A[hi] > t$, then symmetrically for every $i' \ge lo$ we
+  have $A[i'] + A[hi] \ge A[lo] + A[hi] > t$, so $hi$ cannot be the
+  right index of any solution. Decrementing $hi$ preserves it.
+
+The loop terminates when $lo \ge hi$, at which point by the invariant
+there is no solution (otherwise the bracket would have caught it).
+Returning `[]` is therefore correct.
+
+## Extensions
 
 ## Applications
 
@@ -72,3 +189,8 @@ public:
 ```
 
 </details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 2 (Getting Started).
+- [cp-algorithms — Two pointers technique](https://cp-algorithms.com/others/tow_pointer.html)

@@ -1,0 +1,183 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Binary Deque BFS
+
+0-1 BFS, also known as binary deque BFS, solves single-source shortest
+paths on a graph whose edge weights are restricted to $0$ and $1$. A
+standard Dijkstra would work but carries an unnecessary $\log V$ factor;
+the trick is to replace the priority queue with a double-ended queue.
+
+The intuition: when you relax an edge of weight $0$ the new distance
+equals the current vertex's distance, so the target deserves to sit at the
+*front* of the queue alongside vertices that are already "current". When
+you relax an edge of weight $1$ the new distance is one greater, so the
+target goes to the *back*, to be processed in the next layer. The deque
+therefore holds vertices in non-decreasing order of distance at all times,
+which is the only property BFS needs to pop the minimum in $O(1)$.
+
+This pattern is extremely common in grid problems where some moves are
+free and others cost one unit: transforming strings with free and paid
+operations, flipping edges in a directed graph, and walking through doors
+that are either open or closed.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+from collections import deque
+
+def solve(xs):
+    """xs = [n, edges, source]; edges = [[u, v, w], ...] with w in {0, 1}.
+    Returns the shortest-distance array from source."""
+    n, edges, source = xs
+    INF = float("inf")
+    adj = [[] for _ in range(n)]
+    for u, v, w in edges:
+        adj[u].append((v, w))
+        adj[v].append((u, w))  # undirected
+    dist = [INF] * n
+    dist[source] = 0
+    dq = deque([source])
+    while dq:
+        u = dq.popleft()
+        for v, w in adj[u]:
+            nd = dist[u] + w
+            if nd < dist[v]:
+                dist[v] = nd
+                if w == 0:
+                    dq.appendleft(v)
+                else:
+                    dq.append(v)
+    return [d if d != INF else -1 for d in dist]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <deque>
+#include <limits>
+#include <tuple>
+#include <vector>
+
+std::vector<int> zero_one_bfs(int n,
+                              const std::vector<std::tuple<int,int,int>>& edges,
+                              int source) {
+    const int INF = std::numeric_limits<int>::max();
+    std::vector<std::vector<std::pair<int,int>>> adj(n);
+    for (auto [u, v, w] : edges) {
+        adj[u].push_back({v, w});
+        adj[v].push_back({u, w});
+    }
+    std::vector<int> dist(n, INF);
+    dist[source] = 0;
+    std::deque<int> dq;
+    dq.push_back(source);
+    while (!dq.empty()) {
+        int u = dq.front(); dq.pop_front();
+        for (auto [v, w] : adj[u]) {
+            int nd = dist[u] + w;
+            if (nd < dist[v]) {
+                dist[v] = nd;
+                if (w == 0) dq.push_front(v);
+                else        dq.push_back(v);
+            }
+        }
+    }
+    for (int& d : dist) if (d == INF) d = -1;
+    return dist;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="0-1 BFS shortest distances"
+  tests={[
+    { input: [4, [[0,1,0],[1,2,1],[0,2,1],[2,3,0]], 0], expected: [0, 0, 1, 1] },
+    { input: [3, [[0,1,1],[1,2,1]], 0], expected: [0, 1, 2] },
+    { input: [5, [[0,1,0],[1,2,0],[2,3,1],[3,4,0]], 0], expected: [0, 0, 0, 1, 1] },
+  ]}
+>
+{`
+from collections import deque
+
+def solve(xs):
+    n, edges, source = xs
+    INF = float("inf")
+    adj = [[] for _ in range(n)]
+    for u, v, w in edges:
+        adj[u].append((v, w))
+        adj[v].append((u, w))
+    dist = [INF] * n
+    dist[source] = 0
+    dq = deque([source])
+    while dq:
+        u = dq.popleft()
+        for v, w in adj[u]:
+            nd = dist[u] + w
+            if nd < dist[v]:
+                dist[v] = nd
+                if w == 0:
+                    dq.appendleft(v)
+                else:
+                    dq.append(v)
+    return [d if d != INF else -1 for d in dist]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(V + E)$. A vertex can be pushed into the deque more than once — each
+time its distance is improved — but the total number of pushes is bounded
+by the number of edges because every push corresponds to a successful
+relaxation, and relaxations monotonically decrease distance. All deque
+operations are $O(1)$, so the whole algorithm is linear.
+
+### Space analysis
+
+$O(V + E)$. The adjacency list is $O(V + E)$, the distance array is
+$O(V)$, and the deque holds at most $O(V)$ live vertices at a time.
+
+### Proof of correctness
+
+We show the invariant: at every iteration, the distances of vertices
+currently in the deque are monotonically non-decreasing from front to
+back and differ by at most $1$ between front and back. This is exactly
+the property BFS needs to guarantee that the vertex popped from the front
+has its final shortest distance.
+
+Initially the deque contains only the source, so the invariant holds
+trivially. Suppose it holds and we pop the front vertex $u$ with distance
+$d$. Any vertex already in the deque has distance in the set containing
+$d$ and $d+1$ by the invariant. When we relax an edge of weight $0$ from
+$u$ to $v$, the new distance for $v$ is $d$, and we push it to the front;
+the front of the deque therefore still has distance $d$. When we relax an
+edge of weight $1$, the new distance for $v$ is $d+1$, matching the back
+of the deque, so pushing to the back keeps it sorted. The invariant is
+preserved. By the BFS argument on unweighted graphs, the first time a
+vertex is popped its distance is optimal. $\blacksquare$
+
+## Extensions
+
+## Applications
+
+## References
+
+- [cp-algorithms — 0-1 BFS](https://cp-algorithms.com/graph/01_bfs.html)
+- Dial, Robert B. "Algorithm 360: Shortest-Path Forest with Topological Ordering." *Communications of the ACM*, 12(11):632-633, 1969.
+- Bertsekas, Dimitri P. *Network Optimization: Continuous and Discrete Models*, Athena Scientific, 1998.

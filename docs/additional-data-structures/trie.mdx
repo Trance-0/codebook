@@ -1,0 +1,236 @@
+---
+sidebar_position: 6
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Trie
+
+A *trie* (prefix tree) is a rooted tree in which every edge is labelled by a
+single character and every path from the root to a marked node spells out a
+stored string. Sibling edges carry distinct labels, so at each node we can
+branch on the next character in $O(1)$ using a dictionary or fixed-size
+array. Inserting or querying a word of length $L$ touches exactly $L$ nodes
+regardless of how many other words are stored, which makes tries attractive
+for dictionary-heavy workloads and prefix autocomplete.
+
+The example supports three operations: insert a word during construction,
+then answer queries of the form `["search", s]` (is $s$ a stored word?) or
+`["starts_with", s]` (does any stored word start with $s$?).
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+class Trie:
+    def __init__(self):
+        self.children = {}
+        self.end = False
+
+    def insert(self, word):
+        node = self
+        for ch in word:
+            node = node.children.setdefault(ch, Trie())
+        node.end = True
+
+    def _walk(self, s):
+        node = self
+        for ch in s:
+            if ch not in node.children:
+                return None
+            node = node.children[ch]
+        return node
+
+    def search(self, s):
+        node = self._walk(s)
+        return node is not None and node.end
+
+    def starts_with(self, s):
+        return self._walk(s) is not None
+
+
+def solve(xs):
+    words, queries = xs
+    trie = Trie()
+    for w in words:
+        trie.insert(w)
+    answers = []
+    for q in queries:
+        kind, s = q[0], q[1]
+        if kind == "search":
+            answers.append(trie.search(s))
+        else:
+            answers.append(trie.starts_with(s))
+    return answers
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+struct Trie {
+    std::unordered_map<char, std::unique_ptr<Trie>> children;
+    bool end = false;
+
+    void insert(const std::string& word) {
+        Trie* node = this;
+        for (char ch : word) {
+            auto& next = node->children[ch];
+            if (!next) next = std::make_unique<Trie>();
+            node = next.get();
+        }
+        node->end = true;
+    }
+
+    const Trie* walk(const std::string& s) const {
+        const Trie* node = this;
+        for (char ch : s) {
+            auto it = node->children.find(ch);
+            if (it == node->children.end()) return nullptr;
+            node = it->second.get();
+        }
+        return node;
+    }
+
+    bool search(const std::string& s) const {
+        const Trie* node = walk(s);
+        return node != nullptr && node->end;
+    }
+
+    bool starts_with(const std::string& s) const {
+        return walk(s) != nullptr;
+    }
+};
+
+struct Query {
+    std::string kind; // "search" or "starts_with"
+    std::string s;
+};
+
+std::vector<bool> solve(
+    const std::vector<std::string>& words,
+    const std::vector<Query>& queries)
+{
+    Trie trie;
+    for (const auto& w : words) trie.insert(w);
+    std::vector<bool> answers;
+    answers.reserve(queries.size());
+    for (const auto& q : queries) {
+        if (q.kind == "search") answers.push_back(trie.search(q.s));
+        else answers.push_back(trie.starts_with(q.s));
+    }
+    return answers;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Trie insert, search, and prefix search"
+  tests={[
+    {
+      input: [
+        ["apple", "app", "apply"],
+        [["search", "app"], ["search", "appl"], ["starts_with", "appl"], ["starts_with", "bat"]],
+      ],
+      expected: [true, false, true, false],
+    },
+    {
+      input: [["cat", "car", "cart"], [["starts_with", "ca"], ["search", "ca"]]],
+      expected: [true, false],
+    },
+  ]}
+>
+{`
+class Trie:
+    def __init__(self):
+        self.children = {}
+        self.end = False
+
+    def insert(self, word):
+        node = self
+        for ch in word:
+            node = node.children.setdefault(ch, Trie())
+        node.end = True
+
+    def _walk(self, s):
+        node = self
+        for ch in s:
+            if ch not in node.children:
+                return None
+            node = node.children[ch]
+        return node
+
+    def search(self, s):
+        node = self._walk(s)
+        return node is not None and node.end
+
+    def starts_with(self, s):
+        return self._walk(s) is not None
+
+
+def solve(xs):
+    words, queries = xs
+    trie = Trie()
+    for w in words:
+        trie.insert(w)
+    answers = []
+    for q in queries:
+        kind, s = q[0], q[1]
+        if kind == "search":
+            answers.append(trie.search(s))
+        else:
+            answers.append(trie.starts_with(s))
+    return answers
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(L)$ per insert, search, or prefix query, where $L$ is the length of the
+input string. Each step descends one level of the trie and does a constant
+amount of dictionary work. Building the trie from a word list of total
+length $N$ takes $O(N)$.
+
+### Space analysis
+
+$O(N \sigma)$ in the worst case for $N$ total characters across all stored
+words and an alphabet of size $\sigma$. With hash-map children the constant
+is much smaller in practice because only the characters that actually occur
+at each node allocate a slot.
+
+### Proof of correctness
+
+The root-to-node path labels of a trie are a prefix-closed set of strings.
+`insert(word)` extends the path for `word` one character at a time, creating
+missing children as needed, and finally sets the terminal flag on the last
+node — so after insertion, the walk for any prefix of `word` lands on an
+existing node, and the walk for `word` itself lands on a node with the
+terminal flag set. `_walk(s)` returns the node reached by $s$ if the path
+exists and `None` otherwise. Therefore `search(s)` is true exactly when
+some previously inserted word equals $s$, and `starts_with(s)` is true
+exactly when some previously inserted word has $s$ as a prefix.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 10.
+- [cp-algorithms — Trie](https://cp-algorithms.com/string/aho_corasick.html)

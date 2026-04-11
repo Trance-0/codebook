@@ -1,0 +1,329 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Fortune's Algorithm
+
+Given $n$ point sites in the plane, the *Voronoi diagram* partitions the
+plane into $n$ cells, one per site, so that every point in a cell is
+closer to its own site than to any other. The boundary between two
+neighboring cells lies on the perpendicular bisector of the corresponding
+pair of sites, and three cells meet at a vertex equidistant from three
+sites — the circumcenter of that triangle.
+
+Fortune's algorithm, published by Steven Fortune in 1986, computes the
+diagram in $O(n \log n)$ time using a plane sweep. It sweeps a horizontal
+line downward and maintains, along the sweep line, a *beach line* made of
+parabolic arcs: the arc above a given $x$ coordinate belongs to the site
+whose parabola (with that site as focus and the sweep line as directrix)
+is currently highest. As the line moves, two kinds of events reshape the
+beach line — *site events* introduce a new arc, and *circle events* remove
+an arc that has been squeezed to zero width and emit a Voronoi vertex.
+
+A production Fortune implementation needs a self-balancing BST keyed by
+arc order along the beach line plus a priority queue of events and runs
+to hundreds of lines. The snippet below is instead a reference
+*brute-force* construction: for each pair of sites we compute the
+perpendicular bisector and use it to carve out that site's half-plane
+against all other bisectors, producing the Voronoi cell as a convex
+polygon clipped to a bounding box. This is $O(n^3)$ but far shorter and
+still yields the exact combinatorial structure of the diagram. We report
+the result by listing, for each site, the sorted indices of its Voronoi
+neighbors.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs = list of [x, y] site coordinates.
+    Returns, for each site, the sorted list of neighbor site indices
+    in the Voronoi diagram, computed by brute-force half-plane clipping."""
+    sites = [(float(p[0]), float(p[1])) for p in xs]
+    n = len(sites)
+    if n == 0:
+        return []
+    if n == 1:
+        return [[]]
+
+    # bounding box padded around the sites
+    pad = 100.0
+    minx = min(s[0] for s in sites) - pad
+    maxx = max(s[0] for s in sites) + pad
+    miny = min(s[1] for s in sites) - pad
+    maxy = max(s[1] for s in sites) + pad
+    box = [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)]
+
+    def clip(poly, a, b, c):
+        # keep points where a*x + b*y <= c (Sutherland-Hodgman)
+        out = []
+        m = len(poly)
+        for k in range(m):
+            p = poly[k]
+            q = poly[(k + 1) % m]
+            dp = a * p[0] + b * p[1] - c
+            dq = a * q[0] + b * q[1] - c
+            if dp <= 1e-12:
+                out.append(p)
+            if (dp < -1e-12 and dq > 1e-12) or (dp > 1e-12 and dq < -1e-12):
+                t = dp / (dp - dq)
+                out.append((p[0] + t * (q[0] - p[0]),
+                            p[1] + t * (q[1] - p[1])))
+        return out
+
+    neighbors = [[] for _ in range(n)]
+    for i in range(n):
+        sx, sy = sites[i]
+        cell = list(box)
+        for j in range(n):
+            if i == j:
+                continue
+            tx, ty = sites[j]
+            # half-plane: closer to i than to j  <=>
+            #  2*(tx - sx)*x + 2*(ty - sy)*y <= tx*tx + ty*ty - sx*sx - sy*sy
+            a = 2.0 * (tx - sx)
+            b = 2.0 * (ty - sy)
+            c = tx * tx + ty * ty - sx * sx - sy * sy
+            cell = clip(cell, a, b, c)
+            if not cell:
+                break
+        # after the cell is final, j is a neighbor iff its bisector has
+        # positive-length intersection with the cell boundary (>= 2 vertices)
+        real = []
+        if cell:
+            for j in range(n):
+                if i == j:
+                    continue
+                tx, ty = sites[j]
+                a = 2.0 * (tx - sx)
+                b = 2.0 * (ty - sy)
+                c = tx * tx + ty * ty - sx * sx - sy * sy
+                on_edge = 0
+                for p in cell:
+                    if abs(a * p[0] + b * p[1] - c) < 1e-6:
+                        on_edge += 1
+                if on_edge >= 2:
+                    real.append(j)
+        neighbors[i] = sorted(real)
+    return neighbors
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <cmath>
+#include <set>
+#include <vector>
+
+using Pt = std::pair<double,double>;
+
+static std::vector<Pt> clip(const std::vector<Pt>& poly,
+                            double a, double b, double c) {
+    std::vector<Pt> out;
+    int m = (int)poly.size();
+    for (int k = 0; k < m; ++k) {
+        Pt p = poly[k];
+        Pt q = poly[(k + 1) % m];
+        double dp = a * p.first + b * p.second - c;
+        double dq = a * q.first + b * q.second - c;
+        if (dp <= 1e-12) out.push_back(p);
+        if ((dp < -1e-12 && dq > 1e-12) || (dp > 1e-12 && dq < -1e-12)) {
+            double t = dp / (dp - dq);
+            out.push_back({p.first  + t * (q.first  - p.first),
+                           p.second + t * (q.second - p.second)});
+        }
+    }
+    return out;
+}
+
+std::vector<std::vector<int>> voronoi_neighbors(const std::vector<Pt>& sites) {
+    int n = (int)sites.size();
+    std::vector<std::vector<int>> neighbors(n);
+    if (n <= 1) return neighbors;
+
+    double pad = 100.0;
+    double minx = sites[0].first,  maxx = sites[0].first;
+    double miny = sites[0].second, maxy = sites[0].second;
+    for (auto& s : sites) {
+        minx = std::min(minx, s.first);  maxx = std::max(maxx, s.first);
+        miny = std::min(miny, s.second); maxy = std::max(maxy, s.second);
+    }
+    minx -= pad; maxx += pad; miny -= pad; maxy += pad;
+    std::vector<Pt> box = {{minx,miny},{maxx,miny},{maxx,maxy},{minx,maxy}};
+
+    for (int i = 0; i < n; ++i) {
+        auto [sx, sy] = sites[i];
+        std::vector<Pt> cell = box;
+        for (int j = 0; j < n && !cell.empty(); ++j) {
+            if (i == j) continue;
+            auto [tx, ty] = sites[j];
+            double a = 2.0 * (tx - sx);
+            double b = 2.0 * (ty - sy);
+            double c = tx*tx + ty*ty - sx*sx - sy*sy;
+            cell = clip(cell, a, b, c);
+        }
+        std::set<int> real;
+        for (int j = 0; j < n; ++j) {
+            if (i == j) continue;
+            auto [tx, ty] = sites[j];
+            double a = 2.0 * (tx - sx);
+            double b = 2.0 * (ty - sy);
+            double c = tx*tx + ty*ty - sx*sx - sy*sy;
+            int on_edge = 0;
+            for (auto& p : cell)
+                if (std::abs(a*p.first + b*p.second - c) < 1e-6) ++on_edge;
+            if (on_edge >= 2) real.insert(j);
+        }
+        neighbors[i].assign(real.begin(), real.end());
+    }
+    return neighbors;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+The snippet below is the brute-force half-plane version described above.
+Each input is a list of 2-D sites; the output lists, for each site, its
+Voronoi neighbors (the sites whose cells share an edge with it).
+
+<PyListSnippet
+  title="Voronoi neighbor lists (brute force)"
+  tests={[
+    { input: [[0, 0], [2, 0], [1, 2]], expected: [[1, 2], [0, 2], [0, 1]] },
+    { input: [[0, 0], [10, 0]], expected: [[1], [0]] },
+    { input: [[0, 0], [4, 0], [0, 4], [4, 4]], expected: [[1, 2], [0, 3], [0, 3], [1, 2]] },
+  ]}
+>
+{`
+def solve(xs):
+    sites = [(float(p[0]), float(p[1])) for p in xs]
+    n = len(sites)
+    if n == 0:
+        return []
+    if n == 1:
+        return [[]]
+    pad = 100.0
+    minx = min(s[0] for s in sites) - pad
+    maxx = max(s[0] for s in sites) + pad
+    miny = min(s[1] for s in sites) - pad
+    maxy = max(s[1] for s in sites) + pad
+    box = [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy)]
+    def clip(poly, a, b, c):
+        out = []
+        m = len(poly)
+        for k in range(m):
+            p = poly[k]
+            q = poly[(k + 1) % m]
+            dp = a * p[0] + b * p[1] - c
+            dq = a * q[0] + b * q[1] - c
+            if dp <= 1e-12:
+                out.append(p)
+            if (dp < -1e-12 and dq > 1e-12) or (dp > 1e-12 and dq < -1e-12):
+                t = dp / (dp - dq)
+                out.append((p[0] + t * (q[0] - p[0]),
+                            p[1] + t * (q[1] - p[1])))
+        return out
+    neighbors = [[] for _ in range(n)]
+    for i in range(n):
+        sx, sy = sites[i]
+        cell = list(box)
+        for j in range(n):
+            if i == j:
+                continue
+            tx, ty = sites[j]
+            a = 2.0 * (tx - sx)
+            b = 2.0 * (ty - sy)
+            c = tx * tx + ty * ty - sx * sx - sy * sy
+            cell = clip(cell, a, b, c)
+            if not cell:
+                break
+        real = []
+        if cell:
+            for j in range(n):
+                if i == j:
+                    continue
+                tx, ty = sites[j]
+                a = 2.0 * (tx - sx)
+                b = 2.0 * (ty - sy)
+                c = tx * tx + ty * ty - sx * sx - sy * sy
+                on_edge = 0
+                for p in cell:
+                    if abs(a * p[0] + b * p[1] - c) < 1e-6:
+                        on_edge += 1
+                if on_edge >= 2:
+                    real.append(j)
+        neighbors[i] = sorted(set(real))
+    return neighbors
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+Fortune's sweepline is $O(n \log n)$: the beach line holds $O(n)$ arcs,
+every site and circle event is a $O(\log n)$ BST operation, and there are
+$O(n)$ events in total since the final diagram has $O(n)$ vertices and
+edges by Euler's formula on planar graphs.
+
+The brute-force snippet above runs in $O(n^3)$: for each of $n$ sites we
+clip the cell polygon against $n-1$ half-planes, and each clip touches
+the polygon's current vertices, which are themselves $O(n)$ in the worst
+case.
+
+### Space analysis
+
+Fortune's algorithm uses $O(n)$ working memory for the beach line BST,
+the event queue, and the output DCEL. The brute-force snippet uses
+$O(n)$ space per cell plus $O(n)$ for the neighbor lists — $O(n^2)$
+total in the worst case when most pairs of sites are neighbors.
+
+### Proof of correctness
+
+*Correctness of the Voronoi definition via half-planes.* For any two
+distinct sites $s_i$ and $s_j$, the set of points strictly closer to
+$s_i$ than to $s_j$ is the open half-plane on $s_i$'s side of the
+perpendicular bisector of the segment $s_i s_j$. Taking the intersection
+over all $j \ne i$ yields the set of points strictly closer to $s_i$
+than to any other site, which is by definition the (open) Voronoi cell
+of $s_i$. The brute-force snippet builds exactly this intersection
+inside a bounding box, so its output cell equals the true Voronoi cell
+clipped to that box. Two sites are Voronoi neighbors iff their shared
+bisector contributes a positive-length edge to both cells, which is the
+membership test the snippet uses at the end.
+
+*Correctness of Fortune's sweepline.* The key invariant is that the
+beach line at height $y_0$ is the lower envelope of the parabolas with
+foci at all sites already above the sweep line and common directrix
+$y = y_0$. For any point $p$ on an arc belonging to site $s$, the
+distance from $p$ to $s$ equals the distance from $p$ to the sweep line,
+so $p$ is strictly closer to $s$ than to any site still below the sweep
+line. Tracking the breakpoints of this envelope traces out the Voronoi
+edges, site events correctly insert new arcs, and circle events
+correctly detect the moment three sites become equidistant — the
+circumcenter, a Voronoi vertex. A full proof with case analysis is in
+Fortune's original paper and in *Computational Geometry: Algorithms and
+Applications* by de Berg et al. $\blacksquare$
+
+## Extensions
+
+## Applications
+
+## References
+
+- Fortune, Steven. "A sweepline algorithm for Voronoi diagrams." *Algorithmica*, 2(1):153-174, 1987. (Conference version: *SoCG*, 1986.)
+- de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 7 (Voronoi Diagrams).
+- Aurenhammer, Klein, Lee. *Voronoi Diagrams and Delaunay Triangulations*, World Scientific, 2013.
+- [cp-algorithms — Delaunay triangulation and Voronoi diagram](https://cp-algorithms.com/geometry/delaunay.html)

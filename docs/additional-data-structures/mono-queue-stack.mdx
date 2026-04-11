@@ -1,0 +1,173 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Mono Queue and Mono Stack
+
+A *monotonic stack* is a stack whose contents are kept in strictly increasing
+or strictly decreasing order from bottom to top. Before pushing a new value,
+any existing top elements that would violate the ordering are popped. A
+*monotonic queue* (usually implemented with a deque) extends the same idea
+to a sliding window: values are pushed on the right and dropped from the
+left once they leave the window.
+
+The canonical problem shown below is "next greater element": for each index
+$i$ in an array, find the smallest index $j > i$ with `nums[j] > nums[i]`,
+or $-1$ if no such index exists. A decreasing monotonic stack of pending
+indices solves it in a single left-to-right pass.
+
+## Mono stack
+
+A mono stack is a stack that only allows the elements to be pushed in decreasing/increasing order.
+
+This structure is useful when the increment/decrement of the elements is the only thing we are caring about.
+
+For example, when we use interval editing to construct the array, we only care about the increment/decrement of the elements.
+
+Since craving a hole is equivalent to create a new heap.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    nums = xs
+    n = len(nums)
+    ans = [-1] * n
+    stack = []  # indices with strictly decreasing values
+    for i, v in enumerate(nums):
+        while stack and nums[stack[-1]] < v:
+            ans[stack.pop()] = i
+        stack.append(i)
+    return ans
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <stack>
+#include <vector>
+
+std::vector<int> solve(const std::vector<int>& nums) {
+    int n = static_cast<int>(nums.size());
+    std::vector<int> ans(n, -1);
+    std::stack<int> st;
+    for (int i = 0; i < n; ++i) {
+        while (!st.empty() && nums[st.top()] < nums[i]) {
+            ans[st.top()] = i;
+            st.pop();
+        }
+        st.push(i);
+    }
+    return ans;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Next greater element index"
+  tests={[
+    { input: [2, 1, 2, 4, 3], expected: [3, 2, 3, -1, -1] },
+    { input: [5, 4, 3, 2, 1], expected: [-1, -1, -1, -1, -1] },
+    { input: [1, 2, 3, 4, 5], expected: [1, 2, 3, 4, -1] },
+    { input: [], expected: [] },
+  ]}
+>
+{`
+def solve(xs):
+    nums = xs
+    n = len(nums)
+    ans = [-1] * n
+    stack = []
+    for i, v in enumerate(nums):
+        while stack and nums[stack[-1]] < v:
+            ans[stack.pop()] = i
+        stack.append(i)
+    return ans
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n)$. Each index is pushed onto the stack exactly once and popped at most
+once, so the total work over the outer loop and all inner `while` iterations
+is bounded by $2n$.
+
+### Space analysis
+
+$O(n)$ auxiliary for the stack in the worst case — a strictly decreasing
+input never triggers any pops, so every index stays on the stack until the
+end.
+
+### Proof of correctness
+
+Maintain the invariant "the stack holds indices of elements whose next
+greater element has not yet been found, in strictly decreasing order of
+value from bottom to top". When processing index $i$ with value $v$, any
+stack top $j$ with `nums[j] < v` has found its answer: $i$ is the earliest
+later index with a strictly greater value, because every index between $j$
+and $i$ that was ever pushed has already been popped (otherwise it would
+still be on the stack and lie below $i$, violating monotonicity). Popping
+$j$ and recording `ans[j] = i` preserves the invariant. After pushing $i$
+the stack is still decreasing. Indices remaining on the stack at the end
+keep the default $-1$, which is correct because no later element ever
+exceeded them.
+
+## Extensions
+
+## Applications
+
+### Monostack
+
+### Leetcode 1526
+
+- [Leetcode 1526](https://leetcode.com/problems/minimum-number-of-increments-on-subarrays-to-form-a-target-array/)
+
+<details>
+<summary>Intuition</summary>
+
+We only need to care about the increment/decrement of the elements, so we can use a mono stack to keep track of the elements that are not yet filled.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def minNumberOperations(self, target: List[int]) -> int:
+        # use mono stack
+        st=[0]
+        res=0
+        for i in target:
+            if i==st[-1]:
+                continue
+            elif i<st[-1]:
+                while i<=st[-1]:
+                    st.pop()
+                st.append(i)
+            else:
+                res+=i-st[-1]
+                st.append(i)
+        return res
+```
+</details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 10 (Stacks and Queues).
+- [cp-algorithms — Sparse table](https://cp-algorithms.com/data_structures/sparse-table.html)

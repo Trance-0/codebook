@@ -1,0 +1,442 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Interval Tree
+
+## Description
+
+Interval tree is a data structure that can be used to solve interval query problems.
+
+- Query: returns the number of overlaps with the query interval
+
+Complexity:
+
+$O(\log n)$ for query, $O(n \log n)$ for build
+
+An interval tree stores a set of one-dimensional intervals and, given a
+query point $q$, reports all intervals that contain $q$ in output-sensitive
+time. The classical construction picks the median of all endpoint
+coordinates as the root's split value, stores the intervals that cross the
+median at the root (once sorted by left endpoint and once by right
+endpoint), and recursively builds left and right subtrees from the
+intervals that lie strictly to one side of the median.
+
+A stabbing query at $q$ compares $q$ with the split value: if $q$ is smaller,
+every interval at the root with left endpoint $\le q$ is a hit and we recurse
+left; if $q$ is larger, every interval with right endpoint $\ge q$ is a hit
+and we recurse right. The sorted lists at the root are scanned only until
+the first miss, so each recursion level reports at most as many extra
+intervals as it outputs.
+
+## Codes
+
+:::warning
+
+The class-based implementation below does not use the self-balancing property of the interval tree. Worst case time complexity is $O(n^2)$.
+
+:::
+
+<Tabs>
+<TabItem value="Python-class" label="Python-class">
+
+```python
+
+class Interval:
+    """
+    Structure to represent an interval
+    """
+    def __init__(self, low: int, high: int):
+        """
+        Initialize the interval
+        :param low: the low value of the interval
+        :param high: the high value of the interval
+        """
+        self.low = low
+        self.high = high
+
+class Node:
+    """
+    Structure to represent a node in Interval Search Tree
+    """
+    def __init__(self, i: Interval):
+        """
+        Initialize the node
+        :param i: the interval of the node
+        """
+        self.i = i
+        # the maximum value of the interval
+        self.max = i.high
+        self.left = None
+        self.right = None
+        # internal property maintained along with the interval tree
+        # sections belows could be removed if not needed
+        self.interval_count = 1
+
+def newNode(i: Interval) -> Node:
+    """
+    Create a new Interval Search Tree Node
+    :param i: the interval of the node
+    :return: the new node
+    """
+    temp = Node(Interval(i.low, i.high))
+    return temp
+
+def insert(root: Node, i: Interval) -> Node:
+    """
+    Insert the interval into the interval tree
+    This is similar to BST Insert.  
+    Here the low value of interval is used to maintain BST property
+    :param root: the root of the interval tree
+    :param i: the interval to insert
+    :return: the node that the interval is inserted into
+    """
+    # Base case: Tree is empty, new node becomes root
+    if root is None:
+        return newNode(i)
+        
+    # Get low value of interval at root
+    l = root.i.low
+    
+    # If root's low value is smaller, 
+    # then new interval goes to left subtree
+    if i.low < l:
+        root.left = insert(root.left, i)
+        
+    # Else, new node goes to right subtree.
+    else:
+        root.right = insert(root.right, i)
+        
+    # Update the max value of this ancestor if needed
+    if root.max < i.high:
+        root.max = i.high
+
+    # additional property to maintain the interval tree, expected to be O(1)
+    # sections belows could be removed if not needed
+    root.interval_count += 1
+
+    return root
+
+def isOverlapping(i1: Interval, i2: Interval) -> bool:
+    """
+    Check if two intervals overlap
+    :param i1: the first interval
+    :param i2: the second interval
+    :return: True if the intervals overlap, otherwise False
+    """
+    if i1.low <= i2.high and i2.low <= i1.high:
+        return True
+    return False
+
+def overlapSearch(root: Node, i: Interval) -> Interval:
+    """
+    Search for the interval that overlaps with the query interval
+    :param root: the root of the interval tree
+    :param i: the interval to search for
+    :return: the node that overlaps with the interval, otherwise None
+    """
+    # Base Case, tree is empty
+    if root is None:
+        return None
+        
+    # If given interval overlaps with root
+    if isOverlapping(root.i, i) is True:
+        return root.i
+        
+    # If left child of root is present and max of left child is
+    # greater than or equal to given interval, then i may
+    # overlap with an interval is left subtree
+    if root.left is not None and root.left.max >= i.low:
+        return overlapSearch(root.left, i)
+        
+    # Else interval can only overlap with right subtree
+    return overlapSearch(root.right, i)
+
+def inorder(root: Node):
+    """
+    Inorder traversal of the interval tree
+    :param root: the root of the interval tree
+    """
+    if root is None:
+        return
+    inorder(root.left)
+    print("[" + str(root.i.low) + ", " + str(root.i.high) + "]" + " max = " + str(root.max))
+    inorder(root.right)
+
+def isContaining(i1: Interval, i2: Interval) -> bool:
+    """
+    Check if i2 is contained by i1
+    :param i1: the first interval
+    :param i2: the second interval
+    :return: True if i2 is contained by i1, otherwise False
+    """
+    if i1.low <= i2.low and i1.high >= i2.high:
+        return True
+    return False
+
+def containSearch(root: Node, i: Interval) -> Interval:
+    """
+    Search for the interval that containing the query interval
+    :param root: the root of the interval tree
+    :param i: the interval to search for
+    :return: the interval that containing the query interval, otherwise None
+    """
+    if root is None:
+        return None
+    if isContaining(root.i, i) is True:
+        return root.i
+```
+
+</TabItem>
+
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    intervals, queries = xs
+
+    def build(idx):
+        if not idx:
+            return None
+        endpoints = []
+        for i in idx:
+            endpoints.append(intervals[i][0])
+            endpoints.append(intervals[i][1])
+        endpoints.sort()
+        mid = endpoints[len(endpoints) // 2]
+
+        left, right, cross = [], [], []
+        for i in idx:
+            a, b = intervals[i]
+            if b < mid:
+                left.append(i)
+            elif a > mid:
+                right.append(i)
+            else:
+                cross.append(i)
+
+        by_lo = sorted(cross, key=lambda i: intervals[i][0])
+        by_hi = sorted(cross, key=lambda i: intervals[i][1], reverse=True)
+        return {
+            "mid": mid,
+            "by_lo": by_lo,
+            "by_hi": by_hi,
+            "left":  build(left),
+            "right": build(right),
+        }
+
+    root = build(list(range(len(intervals))))
+
+    def stab(node, q, out):
+        if node is None:
+            return
+        if q < node["mid"]:
+            for i in node["by_lo"]:
+                if intervals[i][0] <= q:
+                    out.append(i)
+                else:
+                    break
+            stab(node["left"], q, out)
+        elif q > node["mid"]:
+            for i in node["by_hi"]:
+                if intervals[i][1] >= q:
+                    out.append(i)
+                else:
+                    break
+            stab(node["right"], q, out)
+        else:
+            out.extend(node["by_lo"])
+
+    result = []
+    for q in queries:
+        out = []
+        stab(root, q, out)
+        result.append(sorted(out))
+    return result
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <vector>
+
+struct IntervalTree {
+    std::vector<std::pair<int,int>> ivs;
+    struct Node {
+        int mid;
+        std::vector<int> by_lo, by_hi;
+        Node *l = nullptr, *r = nullptr;
+    };
+    Node* root = nullptr;
+
+    Node* build(std::vector<int> idx) {
+        if (idx.empty()) return nullptr;
+        std::vector<int> eps;
+        for (int i : idx) { eps.push_back(ivs[i].first); eps.push_back(ivs[i].second); }
+        std::sort(eps.begin(), eps.end());
+        int mid = eps[eps.size() / 2];
+
+        std::vector<int> L, R, C;
+        for (int i : idx) {
+            if (ivs[i].second < mid) L.push_back(i);
+            else if (ivs[i].first > mid) R.push_back(i);
+            else C.push_back(i);
+        }
+        auto* n = new Node{mid};
+        n->by_lo = C;
+        std::sort(n->by_lo.begin(), n->by_lo.end(),
+                  [&](int a, int b) { return ivs[a].first < ivs[b].first; });
+        n->by_hi = C;
+        std::sort(n->by_hi.begin(), n->by_hi.end(),
+                  [&](int a, int b) { return ivs[a].second > ivs[b].second; });
+        n->l = build(L);
+        n->r = build(R);
+        return n;
+    }
+
+    void stab(Node* n, int q, std::vector<int>& out) const {
+        if (!n) return;
+        if (q < n->mid) {
+            for (int i : n->by_lo) {
+                if (ivs[i].first <= q) out.push_back(i); else break;
+            }
+            stab(n->l, q, out);
+        } else if (q > n->mid) {
+            for (int i : n->by_hi) {
+                if (ivs[i].second >= q) out.push_back(i); else break;
+            }
+            stab(n->r, q, out);
+        } else {
+            for (int i : n->by_lo) out.push_back(i);
+        }
+    }
+};
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Stabbing query with an interval tree"
+  tests={[
+    {
+      input: [
+        [[1, 5], [2, 4], [6, 8], [3, 7], [9, 10]],
+        [3, 6, 9, 11]
+      ],
+      expected: [[0, 1, 3], [2, 3], [4], []]
+    }
+  ]}
+>
+{`
+def solve(xs):
+    intervals, queries = xs
+
+    def build(idx):
+        if not idx:
+            return None
+        endpoints = []
+        for i in idx:
+            endpoints.append(intervals[i][0])
+            endpoints.append(intervals[i][1])
+        endpoints.sort()
+        mid = endpoints[len(endpoints) // 2]
+
+        left, right, cross = [], [], []
+        for i in idx:
+            a, b = intervals[i]
+            if b < mid:
+                left.append(i)
+            elif a > mid:
+                right.append(i)
+            else:
+                cross.append(i)
+
+        by_lo = sorted(cross, key=lambda i: intervals[i][0])
+        by_hi = sorted(cross, key=lambda i: intervals[i][1], reverse=True)
+        return {
+            "mid": mid,
+            "by_lo": by_lo,
+            "by_hi": by_hi,
+            "left":  build(left),
+            "right": build(right),
+        }
+
+    root = build(list(range(len(intervals))))
+
+    def stab(node, q, out):
+        if node is None:
+            return
+        if q < node["mid"]:
+            for i in node["by_lo"]:
+                if intervals[i][0] <= q:
+                    out.append(i)
+                else:
+                    break
+            stab(node["left"], q, out)
+        elif q > node["mid"]:
+            for i in node["by_hi"]:
+                if intervals[i][1] >= q:
+                    out.append(i)
+                else:
+                    break
+            stab(node["right"], q, out)
+        else:
+            out.extend(node["by_lo"])
+
+    result = []
+    for q in queries:
+        out = []
+        stab(root, q, out)
+        result.append(sorted(out))
+    return result
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+Build is $O(n \log n)$ and each stabbing query runs in $O(\log n + m)$ where
+$m$ is the number of reported intervals. The depth of the tree is
+$O(\log n)$, and at each level the scan over the sorted cross list stops as
+soon as it encounters a non-reported interval.
+
+### Space analysis
+
+$O(n)$. Every interval is stored in exactly one node — the highest node
+whose median it crosses — and each such interval appears twice in that
+node's two sorted lists.
+
+### Proof of correctness
+
+Fix a query point $q$. An interval $[a, b]$ contains $q$ iff $a \le q \le b$.
+Each interval is stored at the unique node whose median $m$ lies in $[a, b]$.
+If $q < m$ then $q < b$ is automatic, so the interval contains $q$ iff
+$a \le q$; the scan of `by_lo` in increasing left-endpoint order reports
+exactly these intervals and stops at the first $a > q$. The symmetric
+argument handles $q > m$, and $q = m$ reports every crossing interval.
+Every qualifying interval whose storing node is on the root-to-leaf path
+towards $q$ is reported, and intervals on other branches cannot contain $q$
+because they lie entirely on the opposite side of some median. See de Berg
+et al., Chapter 10, for the full treatment.
+
+## Extensions
+
+## Applications
+
+## References
+
+- de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 10 (More Geometric Data Structures).
+- Edelsbrunner, H. "Dynamic data structures for orthogonal intersection queries." Technical report, 1980.
+- [cp-algorithms — Segment Tree](https://cp-algorithms.com/data_structures/segment_tree.html)
+- [GeeksforGeeks — Interval Tree](https://www.geeksforgeeks.org/dsa/interval-tree/)

@@ -1,0 +1,191 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Graham Scan
+
+Graham scan computes the convex hull of a finite planar point set by first
+sorting the points around an anchor (the bottom-most, leftmost point), then
+sweeping through them once while maintaining a stack of "so-far" hull
+vertices. On each new point, any strictly-right (clockwise) turn at the top
+of the stack means the previous vertex cannot be on the hull and gets
+popped. When the sweep finishes, the stack holds the hull in counter-clockwise
+order.
+
+A very common practical variant is Andrew's monotone chain, which sorts the
+points lexicographically instead of by polar angle and builds the lower and
+upper hulls in two passes. It avoids atan2, works entirely with
+cross-products, and has the same $O(n \log n)$ complexity. The
+implementation below uses monotone chain for numerical robustness and
+clarity.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """Return the convex hull of xs in CCW order, starting from the
+    bottom-most (then leftmost) point. xs is a list of [x, y] points.
+    Uses Andrew's monotone chain variant of Graham scan."""
+    pts = sorted({tuple(p) for p in xs})
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+
+    upper = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+
+    hull = lower[:-1] + upper[:-1]
+    # Rotate so we start at the bottom-most, then leftmost point.
+    start = min(range(len(hull)), key=lambda i: (hull[i][1], hull[i][0]))
+    hull = hull[start:] + hull[:start]
+    return [list(p) for p in hull]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+#include <array>
+#include <algorithm>
+
+using Point = std::array<long long, 2>;
+
+static long long cross(const Point& o, const Point& a, const Point& b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+}
+
+std::vector<Point> graham_scan(std::vector<Point> pts) {
+    std::sort(pts.begin(), pts.end());
+    pts.erase(std::unique(pts.begin(), pts.end()), pts.end());
+    int n = static_cast<int>(pts.size());
+    if (n <= 1) return pts;
+
+    std::vector<Point> lower;
+    for (const auto& p : pts) {
+        while (lower.size() >= 2 &&
+               cross(lower[lower.size() - 2], lower.back(), p) <= 0) {
+            lower.pop_back();
+        }
+        lower.push_back(p);
+    }
+
+    std::vector<Point> upper;
+    for (int i = n - 1; i >= 0; --i) {
+        const auto& p = pts[i];
+        while (upper.size() >= 2 &&
+               cross(upper[upper.size() - 2], upper.back(), p) <= 0) {
+            upper.pop_back();
+        }
+        upper.push_back(p);
+    }
+
+    lower.pop_back();
+    upper.pop_back();
+    lower.insert(lower.end(), upper.begin(), upper.end());
+    return lower;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Graham scan convex hull"
+  tests={[
+    { input: [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]], expected: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+    { input: [[0, 0], [4, 0], [4, 4], [0, 4], [1, 1], [2, 2], [3, 1]], expected: [[0, 0], [4, 0], [4, 4], [0, 4]] },
+    { input: [[0, 0], [2, 0], [1, 2]], expected: [[0, 0], [2, 0], [1, 2]] },
+  ]}
+>
+{`
+def solve(xs):
+    pts = sorted({tuple(p) for p in xs})
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+
+    upper = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+
+    hull = lower[:-1] + upper[:-1]
+    start = min(range(len(hull)), key=lambda i: (hull[i][1], hull[i][0]))
+    hull = hull[start:] + hull[:start]
+    return [list(p) for p in hull]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n \log n)$. Sorting the points lexicographically (or by polar angle in
+the classical version) dominates the cost. The two chain-building passes
+each run in amortized linear time: every point is pushed exactly once and
+popped at most once, so the total work of the inner while-loops across the
+whole sweep is $O(n)$.
+
+### Space analysis
+
+$O(n)$ for the sorted array and the two hull stacks. When the points are
+pre-sorted the algorithm is effectively in-place except for the output.
+
+### Proof of correctness
+
+The classical proof proceeds by induction on the sweep index for each of
+the lower and upper chains. Inductive hypothesis: after processing the
+first $k$ lexicographically sorted points, the stack contains the lower
+convex hull of those points in left-to-right order. When point $k+1$ is
+appended, a non-left (clockwise or collinear) turn at the top of the stack
+means the previous vertex is strictly above the segment from its
+predecessor to the new point, so it cannot belong to the lower hull and is
+discarded. Popping continues until a left turn is restored, after which
+the hypothesis holds for $k+1$ points. The symmetric argument for the
+right-to-left pass yields the upper hull, and the two chains share only
+their extreme endpoints, which are removed once when concatenating. The
+final polygon is the full convex hull in counter-clockwise order.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Graham, R. L. (1972). "An efficient algorithm for determining the convex hull of a finite planar set." *Information Processing Letters*, 1(4), 132-133.
+- Andrew, A. M. (1979). "Another efficient algorithm for convex hulls in two dimensions." *Information Processing Letters*, 9(5), 216-219.
+- de Berg, M., Cheong, O., van Kreveld, M., & Overmars, M. *Computational Geometry: Algorithms and Applications*, 3rd ed. Springer, 2008, Chapter 1.
+- [cp-algorithms — Convex Hull construction](https://cp-algorithms.com/geometry/convex-hull.html)

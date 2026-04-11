@@ -1,0 +1,205 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Kruskal's Algorithm
+
+Kruskal's algorithm builds a minimum spanning tree (MST) of a connected,
+undirected, weighted graph by sweeping the edges in nondecreasing order
+of weight and accepting each edge that does not form a cycle with the
+edges already chosen. "Does it form a cycle" is answered in near-constant
+amortized time by a disjoint-set union (union-find) structure: two
+endpoints are already connected if and only if they share a root.
+
+The algorithm is a textbook greedy: the global optimum is assembled from
+locally cheapest non-cycling choices. Its correctness rests on the *cut
+property* of MSTs, proved below.
+
+The `solve` function takes `[n, edges]` where `edges` is a list of
+`[u, v, w]` triples on vertices $0, 1, \dots, n - 1$, and returns the
+total weight of the MST. If the graph is disconnected, it returns `-1`.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs = [n, edges]. Return total MST weight, or -1 if disconnected."""
+    n, edges = xs
+    parent = list(range(n))
+    rank = [0] * n
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]  # path compression (halving)
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return False
+        if rank[ra] < rank[rb]:
+            ra, rb = rb, ra
+        parent[rb] = ra
+        if rank[ra] == rank[rb]:
+            rank[ra] += 1
+        return True
+
+    total = 0
+    taken = 0
+    for u, v, w in sorted(edges, key=lambda e: e[2]):
+        if union(u, v):
+            total += w
+            taken += 1
+            if taken == n - 1:
+                break
+    return total if taken == n - 1 else -1
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <numeric>
+#include <vector>
+
+struct DSU {
+    std::vector<int> parent, rank_;
+    DSU(int n) : parent(n), rank_(n, 0) { std::iota(parent.begin(), parent.end(), 0); }
+    int find(int x) {
+        while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+        return x;
+    }
+    bool unite(int a, int b) {
+        a = find(a); b = find(b);
+        if (a == b) return false;
+        if (rank_[a] < rank_[b]) std::swap(a, b);
+        parent[b] = a;
+        if (rank_[a] == rank_[b]) ++rank_[a];
+        return true;
+    }
+};
+
+long long kruskal(int n, std::vector<std::array<int, 3>> edges) {
+    std::sort(edges.begin(), edges.end(),
+              [](const auto& a, const auto& b) { return a[2] < b[2]; });
+    DSU dsu(n);
+    long long total = 0;
+    int taken = 0;
+    for (auto& e : edges) {
+        if (dsu.unite(e[0], e[1])) {
+            total += e[2];
+            if (++taken == n - 1) break;
+        }
+    }
+    return taken == n - 1 ? total : -1;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Kruskal's MST total weight"
+  tests={[
+    { input: [4, [[0, 1, 1], [1, 2, 2], [0, 2, 4], [2, 3, 3]]], expected: 6 },
+    { input: [1, []], expected: 0 },
+    { input: [3, [[0, 1, 5]]], expected: -1 },
+    { input: [5, [[0, 1, 1], [1, 2, 2], [2, 3, 3], [3, 4, 4], [0, 4, 10]]], expected: 10 },
+  ]}
+>
+{`
+def solve(xs):
+    n, edges = xs
+    parent = list(range(n))
+    rank = [0] * n
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return False
+        if rank[ra] < rank[rb]:
+            ra, rb = rb, ra
+        parent[rb] = ra
+        if rank[ra] == rank[rb]:
+            rank[ra] += 1
+        return True
+    total = 0
+    taken = 0
+    for u, v, w in sorted(edges, key=lambda e: e[2]):
+        if union(u, v):
+            total += w
+            taken += 1
+            if taken == n - 1:
+                break
+    return total if taken == n - 1 else -1
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(E \log E)$, which is $O(E \log V)$ since $E \le V^2$. Sorting the
+edges dominates; the $E$ union-find operations together take
+$O(E\, \alpha(V))$, where $\alpha$ is the inverse Ackermann function —
+essentially constant for any input we will ever run.
+
+### Space analysis
+
+$O(V + E)$. The disjoint-set arrays are $O(V)$ and the (possibly
+modified) edge list is $O(E)$. No heap or adjacency structure is
+required.
+
+### Proof of correctness
+
+We prove the *cut property*: for any cut $(S, V \setminus S)$ of the
+graph, if $e$ is a minimum-weight edge crossing the cut, then some MST
+contains $e$.
+
+*Exchange argument.* Let $T$ be any MST. If $e \in T$ we are done. Else
+$T \cup \{e\}$ contains a unique cycle $C$, and since $e$ crosses the
+cut, $C$ must contain at least one other crossing edge $f$. Because $e$
+is minimum across the cut, $w(e) \le w(f)$. Then
+$T' = (T \setminus \{f\}) \cup \{e\}$ is still a spanning tree (we
+removed one edge from a cycle), and its total weight is
+$w(T) - w(f) + w(e) \le w(T)$. So $T'$ is also an MST and it contains
+$e$.
+
+*Kruskal as repeated cut-property application.* When Kruskal considers
+edge $e = (u, v)$ of weight $w$, either $u$ and $v$ are already
+connected by the partial forest $F$ — in which case accepting $e$ would
+create a cycle and we correctly reject it — or they are in different
+components $A$ and $B$. In the latter case, no earlier-processed edge
+(i.e. no edge of strictly smaller weight) crosses the cut $(A, V
+\setminus A)$, because any such edge would already have merged $A$ with
+something. So $e$ is a minimum-weight edge across that cut, and the
+cut property guarantees that extending $F$ with $e$ is consistent with
+some MST. By induction on the number of accepted edges, the final
+forest is an MST. If fewer than $n - 1$ edges are accepted, the graph
+is disconnected and no spanning tree exists.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 23 (Minimum Spanning Trees).
+- Kruskal, J. B. (1956). "On the shortest spanning subtree of a graph and the traveling salesman problem." *Proceedings of the American Mathematical Society*, 7(1), 48-50.
+- [cp-algorithms — Minimum spanning tree (Kruskal)](https://cp-algorithms.com/graph/mst_kruskal.html)

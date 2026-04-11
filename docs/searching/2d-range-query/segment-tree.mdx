@@ -4,6 +4,7 @@ sidebar_position: 4
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Segment Tree
 
@@ -20,6 +21,18 @@ two operations are supported:
 
 one hidden function to maintain the tree is needed.
 
+A segment tree is a balanced binary tree on the index interval $[0, n)$ of
+an array, where each node stores an aggregate (sum, min, max, gcd, ...) of
+the subarray it represents. The root covers the whole array; every internal
+node splits its interval in half and delegates to its two children. Any
+range $[l, r]$ decomposes into $O(\log n)$ canonical subtree intervals, so
+range queries and point updates both run in logarithmic time.
+
+The implementation below keeps a sum segment tree and supports two operations:
+a point update that sets index $i$ to a new value, and a range sum query on
+$[l, r]$. It is the bread-and-butter data structure for competitive
+programming range problems.
+
 ## Codes
 
 <Tabs>
@@ -29,7 +42,7 @@ This is the class-free version of the segment tree implemented by myself, you ca
 
 ```python
 # A segment tree is essentially a list
-def create_by_values(seg: list[Any], vals: list[Any], l: int, r: int, segIdx: int=1):
+def create_by_values(seg: list, vals: list, l: int, r: int, segIdx: int=1):
     """
     Maintain the node on segment tree at segIdx recursively, l,r inclusive.
     :param seg: the segment tree
@@ -48,7 +61,7 @@ def create_by_values(seg: list[Any], vals: list[Any], l: int, r: int, segIdx: in
     # this keeps the property you want to store in the segment tree
     maintain(seg, segIdx)
 
-def maintain(seg: list[Any], segIdx: int):
+def maintain(seg: list, segIdx: int):
     """
     Maintain the node on segment tree at segIdx
     :param seg: the segment tree
@@ -59,7 +72,7 @@ def maintain(seg: list[Any], segIdx: int):
     # EXAMPLE: the sum of the values in the range [l,r]
     seg[segIdx]=seg[segIdx*2]+seg[segIdx*2+1]
 
-def construct(vals: list[Any]) -> list[Any]:
+def construct(vals: list) -> list:
     n = len(vals)
     # get normalized tree size, keep tree filled balanced
     # tree size is at most 2n to the original size of the list
@@ -69,7 +82,7 @@ def construct(vals: list[Any]) -> list[Any]:
     create_by_values(seg, vals, 1, 0, n-1)
     return seg
 
-def query(seg: list[int], l: int, r: int, q: int, segIdx: int=1) -> Any:
+def query(seg: list, l: int, r: int, q: int, segIdx: int=1):
     """
     Query the segment tree at segIdx recursively
     :param seg: the segment tree
@@ -95,8 +108,9 @@ def query(seg: list[int], l: int, r: int, q: int, segIdx: int=1) -> Any:
     maintain(seg, segIdx)
     return ret
 ```
+
 </TabItem>
-<TabItem value="Python" label="Python">
+<TabItem value="Python-class" label="Python-class">
 
 ```python
 class ListSegTree:
@@ -107,7 +121,7 @@ class ListSegTree:
         # get normalized tree size, keep tree filled balanced
         treeSize = 2 << (self.n-1).bit_length()
         # store the max value in the segment created
-        # index 0 is not used since it don't satisfied 2n\neq n 
+        # index 0 is not used since it don't satisfied 2n != n
         # in index 1, it represent the tree max node value in range [0,n).
         # in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
         self.seg = [0] * treeSize
@@ -118,6 +132,7 @@ class ListSegTree:
         # maintain the node on segment tree at segIdx
         # TODO: implement this your self
         # self.seg[segIdx]=max(self.seg[segIdx*2],self.seg[segIdx*2+1])
+        pass
 
     def _construct(self, vals, segIdx, l, r):
         # construct the segment tree, at segIdx, represented range is [l,r] inclusive
@@ -136,6 +151,7 @@ class ListSegTree:
             # no value found
             # TODO: implement this your self
             # return -1
+            pass
         if l==r:
             # return the root index and mark the value as invalid choice, in this case -1
             # TODO: implement this your self
@@ -151,7 +167,7 @@ class ListSegTree:
 ```
 
 </TabItem>
-<TabItem value="C++" label="C++">
+<TabItem value="C++-class" label="C++-class">
 
 ```cpp
 class ListSegTree{
@@ -184,7 +200,7 @@ class ListSegTree{
         // get normalized tree size, keep tree filled balanced
         int treeSize=2<<(n-1).bit_length();
         // store the max value in the segment created
-        // index 0 is not used since it don't satisfied 2n\neq n 
+        // index 0 is not used since it don't satisfied 2n != n
         // in index 1, it represent the tree max node value in range [0,n).
         // in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
         seg=vector<int>(treeSize,0);
@@ -217,15 +233,178 @@ class ListSegTree{
 ```
 
 </TabItem>
+<TabItem value="Python" label="Python">
 
+```python
+def solve(xs):
+    array, queries = xs
+    n = len(array)
+    size = 1
+    while size < max(n, 1):
+        size *= 2
+    seg = [0] * (2 * size)
+
+    for i, v in enumerate(array):
+        seg[size + i] = v
+    for i in range(size - 1, 0, -1):
+        seg[i] = seg[2 * i] + seg[2 * i + 1]
+
+    def update(i, v):
+        i += size
+        seg[i] = v
+        i //= 2
+        while i:
+            seg[i] = seg[2 * i] + seg[2 * i + 1]
+            i //= 2
+
+    def query(l, r):
+        res = 0
+        l += size
+        r += size + 1
+        while l < r:
+            if l & 1:
+                res += seg[l]
+                l += 1
+            if r & 1:
+                r -= 1
+                res += seg[r]
+            l //= 2
+            r //= 2
+        return res
+
+    out = []
+    for q in queries:
+        if q[0] == "update":
+            update(q[1], q[2])
+        else:
+            out.append(query(q[1], q[2]))
+    return out
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+
+struct SegTree {
+    int size;
+    std::vector<long long> seg;
+
+    SegTree(const std::vector<int>& a) {
+        size = 1;
+        while (size < (int)a.size() || size < 1) size *= 2;
+        seg.assign(2 * size, 0);
+        for (int i = 0; i < (int)a.size(); ++i) seg[size + i] = a[i];
+        for (int i = size - 1; i >= 1; --i) seg[i] = seg[2*i] + seg[2*i+1];
+    }
+
+    void update(int i, long long v) {
+        for (seg[i += size] = v, i /= 2; i; i /= 2)
+            seg[i] = seg[2*i] + seg[2*i+1];
+    }
+
+    long long query(int l, int r) const {
+        long long res = 0;
+        for (l += size, r += size + 1; l < r; l /= 2, r /= 2) {
+            if (l & 1) res += seg[l++];
+            if (r & 1) res += seg[--r];
+        }
+        return res;
+    }
+};
+```
+
+</TabItem>
 </Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Sum segment tree with point updates"
+  tests={[
+    {
+      input: [
+        [1, 2, 3, 4, 5],
+        [["sum", 0, 4], ["update", 2, 10], ["sum", 0, 4], ["sum", 2, 3]]
+      ],
+      expected: [15, 22, 14]
+    }
+  ]}
+>
+{`
+def solve(xs):
+    array, queries = xs
+    n = len(array)
+    size = 1
+    while size < max(n, 1):
+        size *= 2
+    seg = [0] * (2 * size)
+
+    for i, v in enumerate(array):
+        seg[size + i] = v
+    for i in range(size - 1, 0, -1):
+        seg[i] = seg[2 * i] + seg[2 * i + 1]
+
+    def update(i, v):
+        i += size
+        seg[i] = v
+        i //= 2
+        while i:
+            seg[i] = seg[2 * i] + seg[2 * i + 1]
+            i //= 2
+
+    def query(l, r):
+        res = 0
+        l += size
+        r += size + 1
+        while l < r:
+            if l & 1:
+                res += seg[l]
+                l += 1
+            if r & 1:
+                r -= 1
+                res += seg[r]
+            l //= 2
+            r //= 2
+        return res
+
+    out = []
+    for q in queries:
+        if q[0] == "update":
+            update(q[1], q[2])
+        else:
+            out.append(query(q[1], q[2]))
+    return out
+`}
+</PyListSnippet>
 
 ## Description
 
-### Runtime analysis
+### Run time analysis
 
-'construct' is $O(n)$
-'query' is $O(\log n)$
+Build is $O(n)$ bottom-up, and both point update and range query run in
+$O(\log n)$. A range $[l, r]$ touches at most two nodes per level of the
+tree, so the iterative "climb from both ends" loop visits $O(\log n)$ nodes.
+
+### Space analysis
+
+$O(n)$. The iterative implementation pads the array up to the next power of
+two and stores the segments in a flat array of twice that padded length.
+
+### Proof of correctness
+
+A range $[l, r]$ decomposes uniquely into the canonical intervals visited by
+the iterative loop: at each level, the leftmost and rightmost uncovered
+cells are absorbed into the result if they are right/left children of their
+parents, after which the loop moves up to the parents. Every element of
+$[l, r]$ is accounted for exactly once because the left pointer only
+advances past covered cells and the right pointer only retreats past them.
+Point updates restore the sum invariant along the single root-to-leaf path
+that contains the updated index, leaving all other paths unchanged.
+
+## Extensions
 
 ## Applications
 
@@ -259,7 +438,7 @@ class ListSegTree:
         # get normalized tree size, keep tree filled balanced
         treeSize = 2 << (self.n-1).bit_length()
         # store the max value in the segment created
-        # index 0 is not used since it don't satisfied 2n\neq n 
+        # index 0 is not used since it don't satisfied 2n != n
         # in index 1, it represent the tree max node value in range [0,n).
         # in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
         self.seg = [0] * treeSize
@@ -347,7 +526,7 @@ class ListSegTree{
         while (treeSize < n) treeSize <<= 1;
         treeSize <<= 1;
         // store the max value in the segment created
-        // index 0 is not used since it don't satisfied 2n\neq n 
+        // index 0 is not used since it don't satisfied 2n != n
         // in index 1, it represent the tree max node value in range [0,n).
         // in index 2, it represent the tree max node value in range [0,n//2) and for index 3 it is [n//2,n)
         seg=vector<int>(treeSize,0);
@@ -398,3 +577,9 @@ class Solution{
 </Tabs>
 
 </details>
+
+## References
+
+- de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 10.
+- Bentley, J. L. "Solutions to Klee's rectangle problems." Technical report, 1977.
+- [cp-algorithms — Segment Tree](https://cp-algorithms.com/data_structures/segment_tree.html)

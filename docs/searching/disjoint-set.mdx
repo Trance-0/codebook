@@ -4,6 +4,7 @@ sidebar_position: 2
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Disjoint Set
 
@@ -15,6 +16,20 @@ There are two operations:
 - `union(x, y)`: Union the sets containing `x` and `y`.
 
 In this implementation, we use an array to store the parent of each element.
+
+A disjoint set union (DSU), also known as union-find, maintains a partition
+of $n$ elements into disjoint groups under two operations: `find(x)`
+returns a canonical representative of the group containing $x$, and
+`union(x, y)` merges the two groups containing $x$ and $y$. Two elements
+are in the same group if and only if they have the same representative.
+
+Each group is stored as a rooted tree whose nodes point to their parent
+and whose root points to itself. `find` walks parent pointers to the root;
+`union` links the root of one tree under the root of another. With two
+standard optimizations — path compression in `find` and union by rank (or
+size) in `union` — the amortized cost per operation becomes essentially
+constant, making DSU the data structure of choice for problems that need
+to answer connectivity queries interleaved with edge additions.
 
 ## Codes
 
@@ -80,6 +95,152 @@ def union(a, b):
 ```
 </TabItem>
 </Tabs>
+
+### Full DSU class
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+class DSU:
+    def __init__(self, n):
+        self.parent = list(range(n))
+        self.rank = [0] * n
+
+    def find(self, x):
+        while self.parent[x] != x:
+            self.parent[x] = self.parent[self.parent[x]]  # path halving
+            x = self.parent[x]
+        return x
+
+    def union(self, a, b):
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb:
+            return False
+        if self.rank[ra] < self.rank[rb]:
+            ra, rb = rb, ra
+        self.parent[rb] = ra
+        if self.rank[ra] == self.rank[rb]:
+            self.rank[ra] += 1
+        return True
+
+def solve(xs):
+    n, ops = xs
+    dsu = DSU(n)
+    answers = []
+    for op in ops:
+        if op[0] == "union":
+            dsu.union(op[1], op[2])
+        else:  # "find"
+            answers.append(dsu.find(op[1]))
+    return answers
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <numeric>
+#include <vector>
+
+struct DSU {
+    std::vector<int> parent, rank_;
+    explicit DSU(int n) : parent(n), rank_(n, 0) {
+        std::iota(parent.begin(), parent.end(), 0);
+    }
+    int find(int x) {
+        while (parent[x] != x) {
+            parent[x] = parent[parent[x]];   // path halving
+            x = parent[x];
+        }
+        return x;
+    }
+    bool unite(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;
+        if (rank_[ra] < rank_[rb]) std::swap(ra, rb);
+        parent[rb] = ra;
+        if (rank_[ra] == rank_[rb]) rank_[ra]++;
+        return true;
+    }
+};
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Union-find over a sequence of operations"
+  tests={[
+    {
+      input: [5, [["union", 0, 1], ["union", 2, 3], ["find", 0], ["find", 2], ["union", 1, 2], ["find", 3]]],
+      expected: [0, 2, 0]
+    },
+    {
+      input: [3, [["find", 0], ["find", 1], ["find", 2]]],
+      expected: [0, 1, 2]
+    },
+  ]}
+>
+{`
+def solve(xs):
+    n, ops = xs
+    parent = list(range(n))
+    rank = [0] * n
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return
+        if rank[ra] < rank[rb]:
+            ra, rb = rb, ra
+        parent[rb] = ra
+        if rank[ra] == rank[rb]:
+            rank[ra] += 1
+    out = []
+    for op in ops:
+        if op[0] == "union":
+            union(op[1], op[2])
+        else:
+            out.append(find(op[1]))
+    return out
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(\alpha(n))$ amortized per operation, where $\alpha$ is the inverse
+Ackermann function. A sequence of $m$ operations on $n$ elements runs in
+$O(m \alpha(n))$ total, which is effectively linear for every $n$ that
+fits in the physical universe.
+
+### Space analysis
+
+$O(n)$. Two arrays of length $n$ hold the parent pointers and the rank of
+each element; no recursion is used.
+
+### Proof of correctness
+
+Correctness of the partition is a straightforward invariant: after any
+sequence of operations, the parent pointers form a forest whose trees are
+exactly the current equivalence classes, because `union` merges two trees
+only at their roots and `find` never changes which root a node ultimately
+points to. The amortized $O(\alpha(n))$ bound is due to Tarjan and van
+Leeuwen: union by rank guarantees that a tree of rank $r$ has at least
+$2^r$ nodes, so rank is at most $\log_2 n$; combining this height bound
+with a potential-function argument over compressed ancestor chains yields
+the inverse Ackermann bound. A full proof is in Tarjan's 1975 paper.
+
+## Extensions
 
 ## Applications
 
@@ -154,3 +315,9 @@ class Solution:
         return result[::-1]
 ```
 </details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 21 (Data Structures for Disjoint Sets).
+- Tarjan, R. E. "Efficiency of a Good But Not Linear Set Union Algorithm". *JACM* 22(2), 1975.
+- [cp-algorithms — Disjoint Set Union](https://cp-algorithms.com/data_structures/disjoint_set_union.html)

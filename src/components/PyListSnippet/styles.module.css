@@ -1,0 +1,100 @@
+.wrapper {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.button {
+  border: 1px solid var(--ifm-color-primary);
+  background: var(--ifm-color-primary);
+  color: white;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.customInputBlock {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.customInputLabel {
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.customInput {
+  width: 100%;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.9rem;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+  resize: vertical;
+}
+
+.neutral {
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+.codeBlock,
+.testBlock {
+  overflow-x: auto;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: var(--ifm-code-background);
+}
+
+.details {
+  margin-top: 0.75rem;
+}
+
+.results {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.resultCard {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.pass {
+  border-left: 4px solid #2e8555;
+}
+
+.fail {
+  border-left: 4px solid #d93025;
+}
+
+.error {
+  margin-top: 0.75rem;
+  color: #d93025;
+}

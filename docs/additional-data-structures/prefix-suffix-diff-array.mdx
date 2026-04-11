@@ -1,0 +1,130 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Prefix/Suffix array and Difference array
+
+A *prefix sum* array stores the running total of an input sequence so that any
+range sum can be recovered by a single subtraction. A *suffix sum* is the same
+idea read from the right. A *difference array* is the dual construction: it
+stores consecutive differences so that range updates collapse into two point
+edits, and the original array is recovered by one prefix pass.
+
+Together these tricks turn a class of range queries and range updates from
+linear per-operation into amortized constant. The canonical use case solved
+below is offline range-add followed by point queries: each update adds a value
+to a contiguous interval, and each query asks for the current value at a
+single index.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+from itertools import accumulate
+
+def solve(xs):
+    n, updates, queries = xs
+    diff = [0] * (n + 1)
+    for l, r, v in updates:
+        diff[l] += v
+        diff[r + 1] -= v
+    arr = list(accumulate(diff[:n]))
+    return [arr[i] for i in queries]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+
+std::vector<long long> solve(
+    int n,
+    const std::vector<std::array<long long, 3>>& updates,
+    const std::vector<int>& queries)
+{
+    std::vector<long long> diff(n + 1, 0);
+    for (const auto& u : updates) {
+        diff[u[0]] += u[2];
+        diff[u[1] + 1] -= u[2];
+    }
+    for (int i = 1; i < n; ++i) diff[i] += diff[i - 1];
+    std::vector<long long> ans;
+    ans.reserve(queries.size());
+    for (int q : queries) ans.push_back(diff[q]);
+    return ans;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Range add, point query via difference array"
+  tests={[
+    {
+      input: [5, [[0, 2, 3], [1, 4, 2], [3, 3, -1]], [0, 1, 2, 3, 4]],
+      expected: [3, 5, 5, 4, 2],
+    },
+    {
+      input: [3, [[0, 2, 7]], [0, 2]],
+      expected: [7, 7],
+    },
+  ]}
+>
+{`
+from itertools import accumulate
+
+def solve(xs):
+    n, updates, queries = xs
+    diff = [0] * (n + 1)
+    for l, r, v in updates:
+        diff[l] += v
+        diff[r + 1] -= v
+    arr = list(accumulate(diff[:n]))
+    return [arr[i] for i in queries]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n + u + q)$ where $n$ is the array length, $u$ the number of updates, and
+$q$ the number of queries. Each update does two point edits on the difference
+array, the prefix-sum pass is linear in $n$, and each query is a direct array
+lookup.
+
+### Space analysis
+
+$O(n)$ auxiliary for the difference array and the reconstructed values. Input
+updates and queries are not counted against auxiliary memory.
+
+### Proof of correctness
+
+Let $A$ be the target array and $D$ its difference array, defined by $D[0] =
+A[0]$ and $D[i] = A[i] - A[i-1]$ for $i > 0$. Adding $v$ to the interval
+$[l, r]$ in $A$ changes exactly $D[l]$ by $+v$ and $D[r+1]$ by $-v$ — every
+other entry of $D$ is unaffected because consecutive differences inside the
+interval remain the same. After all updates are applied to $D$, the prefix
+sum $A[i] = \sum_{j \le i} D[j]$ reconstructs the final array by telescoping.
+A point query is then a direct lookup.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 10.
+- [cp-algorithms — Fenwick tree](https://cp-algorithms.com/data_structures/fenwick.html)
+- [cp-algorithms — Sparse table](https://cp-algorithms.com/data_structures/sparse-table.html)

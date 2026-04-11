@@ -1,0 +1,260 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Trapezoidal Map
+
+A trapezoidal map is a refinement of a planar subdivision in which every
+face becomes a trapezoid bounded by at most two line segments on the sides
+and two vertical walls on the top and bottom. It is the workhorse of
+practical point location: paired with a randomized incremental
+construction, it gives expected $O(n \log n)$ preprocessing, expected
+$O(n)$ space, and expected $O(\log n)$ query time, with remarkably small
+constants. The associated search structure is a directed acyclic graph
+whose internal nodes test "is the query to the left or right of this
+$x$-vertex?" and "is it above or below this segment?", and whose leaves
+are the trapezoids themselves.
+
+The full randomized incremental construction together with the DAG is
+substantial and rarely short enough to illustrate clearly. The snippet
+below implements a simplified but correct trapezoidal decomposition based
+on vertical slabs: sweep all segment endpoints along the $x$-axis to
+produce a set of vertical strips, and within each strip locate the query
+by scanning the sorted edges vertically. This captures the geometric
+essence of the trapezoidal map and lets us query point-in-subdivision
+correctly; the full DAG version swaps the per-query linear scans for
+$O(\log n)$ tree descent without changing the underlying geometry.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """Simplified trapezoidal-map point location via vertical slabs.
+
+    Input encoding: xs = [query_point, seg_1, seg_2, ...]
+    where query_point = [qx, qy] and each segment is
+    [[x1, y1], [x2, y2]]. Returns [index] of the segment
+    immediately above the query point inside its vertical slab,
+    or [-1] if no segment lies above the query in that slab.
+    """
+    if not xs:
+        return [-1]
+    query = xs[0]
+    segments = xs[1:]
+    qx, qy = query[0], query[1]
+
+    # Build slab boundaries from unique endpoint x-coordinates.
+    xs_coords = sorted({s[0][0] for s in segments} | {s[1][0] for s in segments})
+    if not xs_coords:
+        return [-1]
+    if qx < xs_coords[0] or qx > xs_coords[-1]:
+        return [-1]
+
+    # Segments intersecting this vertical slab are those spanning [a, b].
+    def segs_in_slab(a, b):
+        out = []
+        for idx, s in enumerate(segments):
+            (x1, y1), (x2, y2) = s[0], s[1]
+            lo, hi = min(x1, x2), max(x1, x2)
+            if lo <= a and hi >= b:
+                out.append(idx)
+        return out
+
+    # Find the slab containing qx.
+    slab_lo, slab_hi = None, None
+    for i in range(len(xs_coords) - 1):
+        if xs_coords[i] <= qx <= xs_coords[i + 1]:
+            slab_lo, slab_hi = xs_coords[i], xs_coords[i + 1]
+            break
+    if slab_lo is None:
+        return [-1]
+
+    # For each segment in the slab, compute its y at qx; pick the
+    # one immediately above the query point.
+    def y_at(seg, x):
+        (x1, y1), (x2, y2) = seg[0], seg[1]
+        if x1 == x2:
+            return min(y1, y2)
+        t = (x - x1) / (x2 - x1)
+        return y1 + t * (y2 - y1)
+
+    best_idx = -1
+    best_y = None
+    for idx in segs_in_slab(slab_lo, slab_hi):
+        sy = y_at(segments[idx], qx)
+        if sy >= qy and (best_y is None or sy < best_y):
+            best_y = sy
+            best_idx = idx
+    return [best_idx]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+#include <array>
+#include <set>
+#include <algorithm>
+#include <optional>
+
+using Point = std::array<double, 2>;
+using Segment = std::array<Point, 2>;
+
+int locate(const Point& query, const std::vector<Segment>& segments) {
+    if (segments.empty()) return -1;
+    std::set<double> xset;
+    for (const auto& s : segments) { xset.insert(s[0][0]); xset.insert(s[1][0]); }
+    std::vector<double> xs(xset.begin(), xset.end());
+    double qx = query[0], qy = query[1];
+    if (qx < xs.front() || qx > xs.back()) return -1;
+
+    double slab_lo = xs.front(), slab_hi = xs.back();
+    for (std::size_t i = 0; i + 1 < xs.size(); ++i) {
+        if (xs[i] <= qx && qx <= xs[i + 1]) {
+            slab_lo = xs[i]; slab_hi = xs[i + 1];
+            break;
+        }
+    }
+
+    auto y_at = [](const Segment& s, double x) {
+        double x1 = s[0][0], y1 = s[0][1];
+        double x2 = s[1][0], y2 = s[1][1];
+        if (x1 == x2) return std::min(y1, y2);
+        double t = (x - x1) / (x2 - x1);
+        return y1 + t * (y2 - y1);
+    };
+
+    int best = -1;
+    double best_y = 0.0;
+    bool have = false;
+    for (int i = 0; i < (int)segments.size(); ++i) {
+        const auto& s = segments[i];
+        double lo = std::min(s[0][0], s[1][0]);
+        double hi = std::max(s[0][0], s[1][0]);
+        if (lo <= slab_lo && hi >= slab_hi) {
+            double sy = y_at(s, qx);
+            if (sy >= qy && (!have || sy < best_y)) {
+                best = i; best_y = sy; have = true;
+            }
+        }
+    }
+    return best;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Trapezoidal map point location (simplified)"
+  tests={[
+    { input: [[1, 1], [[0, 2], [4, 2]], [[0, 0], [4, 0]]], expected: [0] },
+    { input: [[1, 3], [[0, 2], [4, 2]], [[0, 0], [4, 0]]], expected: [-1] },
+    { input: [[2, 0], [[0, 1], [4, 1]], [[1, 3], [3, 3]]], expected: [0] },
+  ]}
+>
+{`
+def solve(xs):
+    if not xs:
+        return [-1]
+    query = xs[0]
+    segments = xs[1:]
+    qx, qy = query[0], query[1]
+
+    xs_coords = sorted({s[0][0] for s in segments} | {s[1][0] for s in segments})
+    if not xs_coords:
+        return [-1]
+    if qx < xs_coords[0] or qx > xs_coords[-1]:
+        return [-1]
+
+    def segs_in_slab(a, b):
+        out = []
+        for idx, s in enumerate(segments):
+            (x1, y1), (x2, y2) = s[0], s[1]
+            lo, hi = min(x1, x2), max(x1, x2)
+            if lo <= a and hi >= b:
+                out.append(idx)
+        return out
+
+    slab_lo = slab_hi = None
+    for i in range(len(xs_coords) - 1):
+        if xs_coords[i] <= qx <= xs_coords[i + 1]:
+            slab_lo, slab_hi = xs_coords[i], xs_coords[i + 1]
+            break
+    if slab_lo is None:
+        return [-1]
+
+    def y_at(seg, x):
+        (x1, y1), (x2, y2) = seg[0], seg[1]
+        if x1 == x2:
+            return min(y1, y2)
+        t = (x - x1) / (x2 - x1)
+        return y1 + t * (y2 - y1)
+
+    best_idx = -1
+    best_y = None
+    for idx in segs_in_slab(slab_lo, slab_hi):
+        sy = y_at(segments[idx], qx)
+        if sy >= qy and (best_y is None or sy < best_y):
+            best_y = sy
+            best_idx = idx
+    return [best_idx]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+The full randomized incremental trapezoidal map has expected preprocessing
+time $O(n \log n)$ and expected query time $O(\log n)$. The randomization
+is over the insertion order of the segments: for a uniformly random
+permutation, the expected depth of the search DAG is $O(\log n)$ by a
+backwards-analysis argument. The simplified vertical-slab implementation
+above takes $O(n)$ preprocessing to collect the sorted $x$-coordinates
+and $O(n)$ per query, since it scans every segment to decide which ones
+cross the slab and which of those lies immediately above the query.
+
+### Space analysis
+
+Expected $O(n)$ for the full randomized trapezoidal map, including both
+the subdivision and the search DAG. The slab version stores the sorted
+endpoint coordinates and the original segment list, both $O(n)$.
+
+### Proof of correctness
+
+For the full randomized construction, correctness is established by
+induction on the insertion order: after inserting each segment, the
+current trapezoidal map is exactly the trapezoidal decomposition of the
+segments inserted so far, and every leaf of the search DAG corresponds to
+the unique trapezoid containing its point. Inserting a new segment splits
+some trapezoids into smaller trapezoids and updates the DAG with the
+appropriate test nodes; the invariant is preserved. The simplified slab
+implementation is correct because within a vertical slab where no segment
+endpoint lies strictly inside, the segments crossing the slab are
+vertically ordered — they cannot cross each other inside the slab — so
+returning the segment with the smallest $y$ that is still at least $qy$
+gives exactly the segment immediately above the query point, which is
+the face label in a ray-casting sense.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Mulmuley, K. (1990). "A fast planar partition algorithm, I." *Journal of Symbolic Computation*, 10(3-4), 253-280.
+- Seidel, R. (1991). "A simple and fast incremental randomized algorithm for computing trapezoidal decompositions and for triangulating polygons." *Computational Geometry: Theory and Applications*, 1(1), 51-64.
+- de Berg, M., Cheong, O., van Kreveld, M., & Overmars, M. *Computational Geometry: Algorithms and Applications*, 3rd ed. Springer, 2008, Chapter 6.
+- Preparata, F. P., & Shamos, M. I. *Computational Geometry: An Introduction*. Springer, 1985.

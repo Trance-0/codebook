@@ -1,0 +1,198 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Fast Modulo Exponentiation
+
+via binary exponentiation
+
+Fast Modulo Exponentiation is a technique used to compute $a^b \mod m$ efficiently when $b$ is large.
+
+It states as follows:
+
+Fast modulo exponentiation, also known as **binary exponentiation** or
+**exponentiation by squaring**, computes `pow(base, exp) mod m` in
+logarithmic time. The trick is to read the exponent bit by bit: every time
+we square the running base we double the exponent it represents, and every
+time we see a 1 bit we fold the current base into the result. This reduces
+the number of multiplications from exp down to roughly $\log_2$ of exp,
+which is the difference between "instant" and "never finishes" once the
+exponent gets large.
+
+The identity behind the method is
+
+- if exp is even, base^exp = (base^2)^(exp/2);
+- if exp is odd,  base^exp = base times (base^2)^((exp-1)/2).
+
+Applying it repeatedly drives exp down to zero in $O(\log \text{exp})$
+steps, and because each intermediate value is reduced modulo m the numbers
+never grow past about $m^2$ bits.
+
+## Codes
+
+This should be the section that should be filled first; it follows my naming convention and some standard coding. It should have at least runnable Python code so that I can copy and paste efficiently.
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+Reference implementation in the original style:
+
+```python
+def fast_modulo_exponentiation(a, b, m):
+    """
+    Fast Modulo Exponentiation
+    :param a: Base
+    :param b: Exponent
+    :param m: Modulo
+    :return: a^b % m
+    """
+    result = 1
+    while b > 0:
+        if b % 2 == 1:
+            result = (result * a) % m
+        a = (a * a) % m
+        b //= 2
+    return result
+```
+
+Slightly tighter version that plays nicely with the `solve(xs)` test harness:
+
+```python
+def solve(xs):
+    """xs is [base, exp, mod]; return pow(base, exp) mod mod."""
+    base, exp, mod = xs
+    if mod == 1:
+        return 0
+    result = 1
+    base %= mod
+    while exp > 0:
+        if exp & 1:
+            result = (result * base) % mod
+        base = (base * base) % mod
+        exp >>= 1
+    return result
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <cstdint>
+
+long long mod_pow(long long base, long long exp, long long mod) {
+    if (mod == 1) return 0;
+    long long result = 1 % mod;
+    base %= mod;
+    if (base < 0) base += mod;
+    while (exp > 0) {
+        if (exp & 1LL) {
+            result = (__int128)result * base % mod;
+        }
+        base = (__int128)base * base % mod;
+        exp >>= 1;
+    }
+    return result;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Fast modulo exponentiation"
+  tests={[
+    { input: [2, 10, 1000], expected: 24 },
+    { input: [3, 200, 13], expected: 9 },
+    { input: [7, 0, 97], expected: 1 },
+    { input: [5, 117, 1], expected: 0 },
+  ]}
+>
+{`
+def solve(xs):
+    base, exp, mod = xs
+    if mod == 1:
+        return 0
+    result = 1
+    base %= mod
+    while exp > 0:
+        if exp & 1:
+            result = (result * base) % mod
+        base = (base * base) % mod
+        exp >>= 1
+    return result
+`}
+</PyListSnippet>
+
+## Description
+
+The proof is as follows:
+
+Since any number can be represented as a sum of powers of 2, we can write $b$ as a sum of powers of 2.
+
+$$
+b = 2^{k_1} + 2^{k_2} + \cdots + 2^{k_n}
+$$
+
+where $k_1, k_2, \cdots, k_n$ are the powers of 2 that make up $b$, with $k_1 > k_2 > \cdots > k_n$.
+
+### Run time analysis
+
+$O(\log \text{exp})$ multiplications modulo mod. The loop halves exp on
+every iteration, so it runs about $\log_2$ of exp times, and each iteration
+does a constant number of multiplications and a modulo reduction. Treating
+each modular multiplication as constant time (reasonable when the modulus
+fits in a machine word), the total cost is $O(\log \text{exp})$.
+
+### Space analysis
+
+$O(1)$ auxiliary. Only three running integers — result, base, and exp — are
+kept, and each is bounded in magnitude by roughly $m^2$. No recursion or
+extra buffer is used.
+
+### Proof of correctness
+
+We prove by strong induction on exp that the loop returns base^exp mod mod.
+
+Base case: if exp = 0 the loop body never executes and the function returns
+1, which equals base^0.
+
+Inductive step: assume the claim holds for all non-negative exponents
+strictly less than exp, and consider exp greater than 0. There are two
+cases.
+
+Case 1 (exp is even): the loop reduces to running with base' = base^2 mod
+mod and exp' = exp / 2. By the inductive hypothesis the remaining
+iterations compute (base^2)^(exp/2) mod mod, which equals base^exp mod mod
+by the identity (a^2)^(e/2) = a^e.
+
+Case 2 (exp is odd): the loop first multiplies result by base (so result
+becomes base), then recurses with base' = base^2 mod mod and exp' =
+(exp - 1) / 2. By the inductive hypothesis the remaining iterations
+multiply result by (base^2)^((exp-1)/2), giving a final result of base
+times base^(exp-1), which is base^exp mod mod.
+
+In both cases the returned value equals base^exp mod mod, completing the
+induction.
+
+## Extensions
+
+This can be used to compute n choose k modulo m efficiently. But for most of the time, we use Fermat's little theorem to compute the modulo inverse for $k!$.
+
+## Applications
+
+Missing
+
+## References
+
+I cannot find the original source of the algorithm that helped me understand it.
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 31 (Number-Theoretic Algorithms).
+- [cp-algorithms — Binary exponentiation](https://cp-algorithms.com/algebra/binary-exp.html)
+- [Fermat's little theorem (Wikipedia)](https://en.wikipedia.org/wiki/Fermat%27s_little_theorem)

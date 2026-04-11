@@ -1,0 +1,193 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Gift Wrapping Algorithm
+
+The gift wrapping algorithm, also known as the Jarvis march, builds the convex
+hull of a finite point set the way you would wrap a present with a ribbon:
+start from a point that is guaranteed to lie on the hull (the bottom-most,
+leftmost point), then keep pivoting counter-clockwise and picking the next
+point such that every other point lies to its left. After at most $h$ steps,
+where $h$ is the number of hull vertices, the ribbon closes on itself.
+
+The appeal of Jarvis march is that its running time is $O(nh)$, which is
+output-sensitive: it is linear in $n$ when the hull is small. The downside
+is that it degrades to $O(n^2)$ when almost all points lie on the hull,
+which is where Graham scan and Chan's algorithm win.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """Return the convex hull of xs in CCW order, starting from the
+    bottom-most (then leftmost) point. xs is a list of [x, y] points."""
+    pts = [tuple(p) for p in xs]
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    start = min(range(n), key=lambda i: (pts[i][1], pts[i][0]))
+    hull = []
+    p = start
+    while True:
+        hull.append(pts[p])
+        q = (p + 1) % n
+        for r in range(n):
+            if r == p:
+                continue
+            c = cross(pts[p], pts[q], pts[r])
+            if c < 0 or (c == 0 and
+                         (pts[r][0] - pts[p][0]) ** 2 + (pts[r][1] - pts[p][1]) ** 2 >
+                         (pts[q][0] - pts[p][0]) ** 2 + (pts[q][1] - pts[p][1]) ** 2):
+                q = r
+        p = q
+        if p == start:
+            break
+    return [list(p) for p in hull]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+#include <array>
+#include <cstddef>
+
+using Point = std::array<long long, 2>;
+
+static long long cross(const Point& o, const Point& a, const Point& b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+}
+
+std::vector<Point> gift_wrapping(std::vector<Point> pts) {
+    std::size_t n = pts.size();
+    if (n <= 1) return pts;
+
+    std::size_t start = 0;
+    for (std::size_t i = 1; i < n; ++i) {
+        if (pts[i][1] < pts[start][1] ||
+            (pts[i][1] == pts[start][1] && pts[i][0] < pts[start][0])) {
+            start = i;
+        }
+    }
+
+    std::vector<Point> hull;
+    std::size_t p = start;
+    do {
+        hull.push_back(pts[p]);
+        std::size_t q = (p + 1) % n;
+        for (std::size_t r = 0; r < n; ++r) {
+            if (r == p) continue;
+            long long c = cross(pts[p], pts[q], pts[r]);
+            long long dq = (pts[q][0] - pts[p][0]) * (pts[q][0] - pts[p][0]) +
+                           (pts[q][1] - pts[p][1]) * (pts[q][1] - pts[p][1]);
+            long long dr = (pts[r][0] - pts[p][0]) * (pts[r][0] - pts[p][0]) +
+                           (pts[r][1] - pts[p][1]) * (pts[r][1] - pts[p][1]);
+            if (c < 0 || (c == 0 && dr > dq)) q = r;
+        }
+        p = q;
+    } while (p != start);
+
+    return hull;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Gift wrapping convex hull"
+  tests={[
+    { input: [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]], expected: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+    { input: [[0, 0], [2, 0], [1, 1]], expected: [[0, 0], [2, 0], [1, 1]] },
+    { input: [[0, 0]], expected: [[0, 0]] },
+  ]}
+>
+{`
+def solve(xs):
+    pts = [tuple(p) for p in xs]
+    n = len(pts)
+    if n <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    start = min(range(n), key=lambda i: (pts[i][1], pts[i][0]))
+    hull = []
+    p = start
+    while True:
+        hull.append(pts[p])
+        q = (p + 1) % n
+        for r in range(n):
+            if r == p:
+                continue
+            c = cross(pts[p], pts[q], pts[r])
+            dq = (pts[q][0] - pts[p][0]) ** 2 + (pts[q][1] - pts[p][1]) ** 2
+            dr = (pts[r][0] - pts[p][0]) ** 2 + (pts[r][1] - pts[p][1]) ** 2
+            if c < 0 or (c == 0 and dr > dq):
+                q = r
+        p = q
+        if p == start:
+            break
+    return [list(p) for p in hull]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(nh)$, where $h$ is the number of vertices on the output hull. Each
+iteration of the outer loop discovers one new hull vertex by scanning all
+$n$ points in $O(n)$ time, and there are exactly $h$ such iterations before
+the wrap closes. In the worst case $h = n$ and the algorithm is $O(n^2)$,
+but when the hull is small Jarvis march can be dramatically faster than
+sorting-based approaches.
+
+### Space analysis
+
+$O(h)$ auxiliary memory for the output hull plus $O(1)$ bookkeeping per
+iteration. The input points are read but not modified.
+
+### Proof of correctness
+
+Correctness follows from a simple invariant: at each step the algorithm is
+standing on a known hull vertex $p$ and looks for the next hull vertex $q$
+such that every other point lies in the closed left half-plane of the
+directed line from $p$ to $q$. That $q$ is exactly the point maximizing
+the polar angle from the current edge, and by definition of the convex
+hull it must itself be a hull vertex — otherwise it would be a strict
+interior point and some other point would lie strictly to its right,
+contradicting the half-plane property. Since we start at the bottom-most
+vertex, which is always on the hull, and each step moves to a new hull
+vertex in counter-clockwise order, the loop terminates precisely when the
+wrap returns to the starting vertex, having enumerated all of them. The
+cross-product test with a distance tie-breaker ensures that collinear
+points on an edge are handled consistently.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Jarvis, R. A. (1973). "On the identification of the convex hull of a finite set of points in the plane." *Information Processing Letters*, 2(1), 18-21.
+- Preparata, F. P., & Shamos, M. I. *Computational Geometry: An Introduction*. Springer, 1985.
+- de Berg, M., Cheong, O., van Kreveld, M., & Overmars, M. *Computational Geometry: Algorithms and Applications*, 3rd ed. Springer, 2008.
+- [cp-algorithms — Convex Hull construction](https://cp-algorithms.com/geometry/convex-hull.html)

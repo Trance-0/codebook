@@ -4,6 +4,7 @@ sidebar_position: 1
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # 1D Dynamic Programming
 
@@ -13,10 +14,29 @@ A classical example is the fibonacci sequence, even though it can be solved usin
 
 This kinds of linear recurrent relations is also widely studied in the field of combinatorics. Some linear recurrent relations can be solved using algebraic equations, but some cannot, this will be the case where dynamic programming is the "only" way to solve it. (perhaps)
 
+Another canonical one-dimensional DP problem is the **longest increasing
+subsequence** (LIS): given an array of integers, find the length of the
+longest strictly increasing subsequence.
+
+A naive DP defines dp[i] as the length of the longest increasing subsequence
+ending at position i and takes $O(n^2)$ time. The classic $O(n \log n)$
+improvement is *patience sorting*: sweep left to right and maintain a list
+`tails` where tails[k] is the smallest possible tail value among all
+increasing subsequences of length k+1 seen so far. For each incoming value x
+we replace the leftmost tail that is greater than or equal to x, or append x
+if no such tail exists. The answer is the final length of `tails`. The list
+itself is not necessarily a valid LIS, but its length is.
+
+Binary search (`bisect_left`) drops the per-element work from linear to
+logarithmic, yielding the $O(n \log n)$ bound below.
+
 ## Codes
 
 <Tabs>
 <TabItem value="Python" label="Python">
+
+Fibonacci-style 1D DP:
+
 ```python
 def dp(n: int) -> int:
     dp=[0]*(n+1)
@@ -25,8 +45,128 @@ def dp(n: int) -> int:
         dp[i]=dp[i-1]+dp[i-2]
     return dp[n]
 ```
+
+Patience-sorting LIS in $O(n \log n)$:
+
+```python
+from bisect import bisect_left
+
+def solve(xs):
+    """Return the length of the longest strictly increasing subsequence of xs."""
+    tails = []
+    for x in xs:
+        i = bisect_left(tails, x)
+        if i == len(tails):
+            tails.append(x)
+        else:
+            tails[i] = x
+    return len(tails)
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <vector>
+
+int lis_length(const std::vector<int>& xs) {
+    std::vector<int> tails;
+    for (int x : xs) {
+        auto it = std::lower_bound(tails.begin(), tails.end(), x);
+        if (it == tails.end()) {
+            tails.push_back(x);
+        } else {
+            *it = x;
+        }
+    }
+    return static_cast<int>(tails.size());
+}
+```
+
 </TabItem>
 </Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Longest increasing subsequence (length)"
+  tests={[
+    { input: [10, 9, 2, 5, 3, 7, 101, 18], expected: 4 },
+    { input: [0, 1, 0, 3, 2, 3], expected: 4 },
+    { input: [7, 7, 7, 7], expected: 1 },
+    { input: [], expected: 0 },
+  ]}
+>
+{`
+from bisect import bisect_left
+
+def solve(xs):
+    tails = []
+    for x in xs:
+        i = bisect_left(tails, x)
+        if i == len(tails):
+            tails.append(x)
+        else:
+            tails[i] = x
+    return len(tails)
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n \log n)$. The outer loop runs $n$ times, and each iteration performs a
+binary search over the `tails` array (whose length never exceeds $n$) in
+$O(\log n)$ time. The constant-time update at the found position does not
+change the bound.
+
+### Space analysis
+
+$O(n)$. The `tails` buffer can grow up to the length of the longest
+increasing subsequence in the worst case, which is $n$. No other auxiliary
+storage is needed.
+
+### Proof of correctness
+
+Let L be the true LIS length of the input. We prove by induction on the
+number of elements processed that the following invariant holds after each
+step:
+
+- `tails` has length equal to the current best LIS length on the prefix.
+- For every k in range, tails[k] is the minimum possible tail value of any
+  increasing subsequence of length k+1 in the prefix.
+- `tails` is strictly increasing.
+
+Base case: before any element is seen, `tails` is empty and the invariant
+holds vacuously.
+
+Inductive step: assume the invariant holds after processing the first i
+elements, and consider element x. Let i = bisect_left(tails, x).
+
+Case 1 (i equals the current length): every existing tail is strictly less
+than x, so appending x extends every length-k subsequence whose tail is
+tails[k-1] into a length-(k+1) subsequence ending at x. This strictly
+improves the best length by one and x becomes the new minimum tail for that
+length because no previous length-(k+1) sequence existed.
+
+Case 2 (i is less than the current length): tails[i] is the smallest
+length-(i+1) tail and tails[i] is greater than or equal to x. Replacing
+tails[i] with x preserves strict monotonicity (tails[i-1] is strictly less
+than x by the definition of `bisect_left` and tails[i+1] is strictly greater
+than tails[i] which is greater than or equal to x, hence strictly greater
+than x). Any subsequence of length i+1 that ends at tails[i] can be replaced
+(in terms of tail value) by the subsequence formed by taking a length-i
+subsequence with tail strictly less than x (which exists by the invariant on
+tails[i-1]) and appending x. So the new tails[i] remains the minimum
+length-(i+1) tail.
+
+By induction the invariant holds after processing every element, so the
+final length of `tails` equals L.
+
+## Extensions
 
 ## Applications
 
@@ -58,3 +198,8 @@ class Solution:
         return init[-1]
 ```
 </details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 15 (Dynamic Programming).
+- [cp-algorithms — Longest increasing subsequence](https://cp-algorithms.com/sequences/longest_increasing_subsequence.html)

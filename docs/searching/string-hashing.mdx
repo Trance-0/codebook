@@ -1,0 +1,150 @@
+---
+sidebar_position: 5
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# String Hashing
+
+A polynomial rolling hash maps a string $s$ of length $n$ to an integer
+modulo a large prime $M$ by evaluating it as a polynomial in a fixed base
+$b$. If the characters are $s$ at position $0$, $s$ at position $1$, and
+so on, then the hash is $s_0 \cdot b^{n-1} + s_1 \cdot b^{n-2} + \dots +
+s_{n-1}$, all taken modulo $M$. With a precomputed prefix-hash array and
+the powers of $b$, the hash of any substring can be extracted in constant
+time by subtracting two prefix hashes, exactly the way a prefix-sum
+supports range sums.
+
+In practice this gives a fast probabilistic test for substring equality:
+two substrings whose hashes agree under well-chosen $b$ and $M$ are equal
+with overwhelming probability. To drive the collision probability to
+negligible levels one typically uses a double hash with two independent
+primes, but a single large prime is enough for most casual uses.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def build_hash(s, base=131, mod=(1 << 61) - 1):
+    n = len(s)
+    prefix = [0] * (n + 1)
+    power = [1] * (n + 1)
+    for i in range(n):
+        prefix[i + 1] = (prefix[i] * base + ord(s[i])) % mod
+        power[i + 1] = (power[i] * base) % mod
+    return prefix, power, mod
+
+def substring_hash(prefix, power, mod, l, r):
+    """Hash of s at indices l through r inclusive."""
+    return (prefix[r + 1] - prefix[l] * power[r - l + 1]) % mod
+
+def solve(xs):
+    s, queries = xs
+    prefix, power, mod = build_hash(s)
+    return [substring_hash(prefix, power, mod, l, r) for l, r in queries]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <string>
+#include <vector>
+#include <cstdint>
+
+struct StringHash {
+    static const uint64_t MOD  = (1ULL << 61) - 1;
+    static const uint64_t BASE = 131;
+    std::vector<uint64_t> prefix, power;
+
+    explicit StringHash(const std::string& s) {
+        int n = (int)s.size();
+        prefix.assign(n + 1, 0);
+        power.assign(n + 1, 1);
+        for (int i = 0; i < n; ++i) {
+            prefix[i + 1] = (__int128(prefix[i]) * BASE + (uint8_t)s[i]) % MOD;
+            power[i + 1]  = (__int128(power[i])  * BASE) % MOD;
+        }
+    }
+
+    // Hash of s[l..r] inclusive.
+    uint64_t get(int l, int r) const {
+        __int128 h = prefix[r + 1] - __int128(prefix[l]) * power[r - l + 1] % MOD;
+        h %= (int64_t)MOD;
+        if (h < 0) h += MOD;
+        return (uint64_t)h;
+    }
+};
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Polynomial rolling substring hashes"
+  tests={[
+    { input: ["ababab", [[0, 1], [2, 3], [0, 3], [2, 5]]], expected: null },
+    { input: ["abcabc", [[0, 2], [3, 5]]], expected: null },
+  ]}
+>
+{`
+def solve(xs):
+    s, queries = xs
+    base = 131
+    mod = (1 << 61) - 1
+    n = len(s)
+    prefix = [0] * (n + 1)
+    power = [1] * (n + 1)
+    for i in range(n):
+        prefix[i + 1] = (prefix[i] * base + ord(s[i])) % mod
+        power[i + 1] = (power[i] * base) % mod
+    out = []
+    for l, r in queries:
+        h = (prefix[r + 1] - prefix[l] * power[r - l + 1]) % mod
+        out.append(h)
+    return out
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+Building the prefix-hash array is $O(n)$ because each position does a
+constant amount of multiplication and addition. Each substring-hash query
+is then $O(1)$, so answering $q$ queries costs $O(n + q)$ in total.
+
+### Space analysis
+
+$O(n)$ for the prefix-hash array and the power array. No extra memory is
+needed per query.
+
+### Proof of correctness
+
+Let $H(i)$ denote `prefix` at index $i$, so $H(i)$ equals the polynomial
+$s_0 \cdot b^{i-1} + s_1 \cdot b^{i-2} + \dots + s_{i-1}$, mod $M$. By
+induction on $i$ the recurrence $H(i+1) = H(i) \cdot b + s_i$ holds. For a
+substring of length $L = r - l + 1$, the desired polynomial is
+$s_l \cdot b^{L-1} + \dots + s_r$, which by expanding $H(r+1)$ and
+$H(l) \cdot b^{L}$ equals $H(r+1) - H(l) \cdot b^{L}$ modulo $M$. Hence
+the query formula is exact. Collision probability between two unequal
+strings of length at most $n$ is bounded above by roughly $n / M$ by the
+Schwartz-Zippel lemma over the prime field, which is negligible for
+$M$ near $2^{61}$.
+
+## Extensions
+
+## Applications
+
+## References
+
+- [cp-algorithms — String Hashing](https://cp-algorithms.com/string/string-hashing.html)
+- Karp, R. M., and Rabin, M. O. "Efficient randomized pattern-matching algorithms". *IBM Journal of Research and Development* 31(2), 1987.
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Section 32.2 (The Rabin-Karp algorithm).

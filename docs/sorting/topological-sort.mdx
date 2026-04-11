@@ -4,17 +4,31 @@ sidebar_position: 4
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Topological Sort
 
 Topological sort is a linear ordering of the vertices of a directed acyclic graph (DAG) such that for every directed edge uv from vertex u to vertex v, u comes before v in the ordering.
+
+Every DAG has at least one topological order; cyclic graphs have none.
+Two standard algorithms compute it:
+
+- **Kahn's algorithm (BFS-style).** Repeatedly remove a vertex with
+  in-degree zero.
+- **DFS post-order.** Run DFS from every unvisited vertex and push each
+  vertex onto a stack after its recursion finishes. Reverse the stack.
+
+Both run in linear time. Kahn's algorithm additionally detects cycles (if
+the queue empties before all vertices are emitted, the remaining vertices
+form at least one cycle).
 
 ## Codes
 
 <Tabs>
 <TabItem value="Java" label="Java">
 
-This is a sample code for topological sort using DFS on A [forward star graph](../additional-data-structures/forward-star).
+This is a sample code for topological sort using DFS on a
+[forward star graph](../additional-data-structures/forward-star).
 
 ```java
 public LinkedList<Integer> topologicalSortDFS(ForwardStar E, int start, int Vsize) {
@@ -48,14 +62,162 @@ public LinkedList<Integer> topologicalSortDFS(ForwardStar E, int start, int Vsiz
     return result;
 }
 ```
-</TabItem>
-<TabItem value="Python" label="Python">
-```python
 
+</TabItem>
+
+<TabItem value="Python" label="Python">
+
+Kahn's algorithm (BFS-style). The input `xs` is `[n, edges]` where `n` is
+the number of vertices labelled $0 \ldots n-1$ and `edges` is a list of
+pairs `[u, v]`.
+
+```python
+from collections import deque
+
+def solve(xs):
+    n, edges = xs
+    adj = [[] for _ in range(n)]
+    indeg = [0] * n
+    for u, v in edges:
+        adj[u].append(v)
+        indeg[v] += 1
+
+    q = deque(i for i in range(n) if indeg[i] == 0)
+    order = []
+    while q:
+        u = q.popleft()
+        order.append(u)
+        for v in adj[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                q.append(v)
+
+    if len(order) != n:
+        raise ValueError("graph has a cycle")
+    return order
 ```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <queue>
+#include <stdexcept>
+#include <vector>
+
+std::vector<int> topo_sort(int n, const std::vector<std::pair<int,int>>& edges) {
+    std::vector<std::vector<int>> adj(n);
+    std::vector<int> indeg(n, 0);
+    for (auto [u, v] : edges) {
+        adj[u].push_back(v);
+        ++indeg[v];
+    }
+
+    std::queue<int> q;
+    for (int i = 0; i < n; ++i)
+        if (indeg[i] == 0) q.push(i);
+
+    std::vector<int> order;
+    order.reserve(n);
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        order.push_back(u);
+        for (int v : adj[u])
+            if (--indeg[v] == 0) q.push(v);
+    }
+
+    if ((int)order.size() != n)
+        throw std::runtime_error("graph has a cycle");
+    return order;
+}
+```
+
 </TabItem>
 </Tabs>
 
+## Example
+
+<PyListSnippet
+  title="Topological sort (Kahn's algorithm)"
+  tests={[
+    { input: [6, [[5, 2], [5, 0], [4, 0], [4, 1], [2, 3], [3, 1]]], expected: [4, 5, 0, 2, 3, 1] },
+    { input: [3, [[0, 1], [1, 2]]], expected: [0, 1, 2] },
+    { input: [4, []], expected: [0, 1, 2, 3] },
+  ]}
+>
+{`
+from collections import deque
+
+def solve(xs):
+    n, edges = xs
+    adj = [[] for _ in range(n)]
+    indeg = [0] * n
+    for u, v in edges:
+        adj[u].append(v)
+        indeg[v] += 1
+    q = deque(i for i in range(n) if indeg[i] == 0)
+    order = []
+    while q:
+        u = q.popleft()
+        order.append(u)
+        for v in adj[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                q.append(v)
+    if len(order) != n:
+        raise ValueError("graph has a cycle")
+    return order
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(V + E)$. Building the adjacency list and the in-degree array is $O(V + E)$.
+The main loop dequeues every vertex exactly once and relaxes every edge
+exactly once, so it is also $O(V + E)$.
+
+### Space analysis
+
+$O(V + E)$ for the adjacency list, plus $O(V)$ for the in-degree array and
+the queue. The DFS variant replaces the queue with the recursion stack,
+which is $O(V)$ in the worst case.
+
+### Proof of correctness
+
+Call a valid topological order a *linear extension* of the DAG's reachability
+partial order. We prove Kahn's algorithm produces one.
+
+*Claim.* At the moment a vertex $u$ is enqueued, all of its in-neighbours
+have already been emitted.
+
+*Proof.* A vertex is enqueued only when its in-degree has just dropped to
+zero. The in-degree drops only when we process one of $u$'s in-neighbours
+and decrement along the edge into $u$. Since we initialise `indeg[u]` to the
+true in-degree of $u$, it reaches zero exactly when every in-neighbour has
+been dequeued — and hence emitted — before $u$.
+
+*Claim.* Every vertex is eventually emitted, provided the graph is a DAG.
+
+*Proof.* A DAG has at least one source (a vertex with in-degree zero): pick
+the smallest vertex in any topological ordering of what's left. So the
+initial queue is nonempty. After emitting a source, the induced subgraph
+is still a DAG, so it still has a source, which is exactly a neighbour
+whose in-degree has just been decremented to zero. By induction on $|V|$,
+the process empties the graph.
+
+Together, the two claims say the emission order respects every edge, and
+every vertex is emitted — i.e. the output is a valid topological order.
+
+## Extensions
+
+## Applications
+
 ## References
 
-[Topological Sorting on CS Academy](https://csacademy.com/lesson/topological_sorting)
+- [Topological Sorting on CS Academy](https://csacademy.com/lesson/topological_sorting)
+- Kahn, A. B. (1962). *Topological sorting of large networks.* Communications of the ACM.
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Section 22.4.
+- [cp-algorithms — Topological sort](https://cp-algorithms.com/graph/topological-sort.html)

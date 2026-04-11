@@ -1,0 +1,190 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Multi-dimensional Dynamic Programming
+
+When the state of a subproblem needs more than two indices to describe, we
+call it multi-dimensional DP. A good representative is **best time to buy
+and sell stock with at most k transactions**: given a list of daily prices
+and a transaction budget k, find the maximum profit achievable by buying
+and selling a single share, given that you must sell before buying again
+and can open at most k buy-sell pairs.
+
+The natural state has three dimensions: the day i, the number of completed
+transactions t, and whether you currently hold the stock. Let hold[t][i]
+be the maximum profit on day i after opening your t-th buy (so you are
+currently holding), and cash[t][i] be the maximum profit on day i after
+closing your t-th buy-sell pair (so you are not holding). The recurrences
+are
+
+- hold[t][i] = max(hold[t][i-1], cash[t-1][i-1] - price[i]),
+- cash[t][i] = max(cash[t][i-1], hold[t][i-1] + price[i]),
+
+with base cases hold[0][...] = negative infinity and cash[0][...] = 0.
+The answer is the maximum over t from 0 to k of cash[t][n-1].
+
+A useful shortcut: if k is at least n/2 then there is effectively no
+constraint and the problem collapses to "sum of every positive daily
+difference", which we exploit below to keep the code fast for large k.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs is [k, prices]; return the max profit with at most k transactions."""
+    k, prices = xs
+    n = len(prices)
+    if n == 0 or k == 0:
+        return 0
+    # Unconstrained shortcut when k is large enough to ignore.
+    if k >= n // 2:
+        return sum(max(0, prices[i] - prices[i - 1]) for i in range(1, n))
+    NEG = float("-inf")
+    hold = [NEG] * (k + 1)
+    cash = [0] * (k + 1)
+    for p in prices:
+        for t in range(k, 0, -1):
+            hold[t] = max(hold[t], cash[t - 1] - p)
+            cash[t] = max(cash[t], hold[t] + p)
+    return max(cash)
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <climits>
+#include <vector>
+
+int max_profit_k(int k, const std::vector<int>& prices) {
+    int n = static_cast<int>(prices.size());
+    if (n == 0 || k == 0) return 0;
+    if (k >= n / 2) {
+        int profit = 0;
+        for (int i = 1; i < n; ++i) {
+            profit += std::max(0, prices[i] - prices[i - 1]);
+        }
+        return profit;
+    }
+    std::vector<int> hold(k + 1, INT_MIN / 2);
+    std::vector<int> cash(k + 1, 0);
+    for (int p : prices) {
+        for (int t = k; t >= 1; --t) {
+            hold[t] = std::max(hold[t], cash[t - 1] - p);
+            cash[t] = std::max(cash[t], hold[t] + p);
+        }
+    }
+    return *std::max_element(cash.begin(), cash.end());
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Best time to buy and sell stock with at most k transactions"
+  tests={[
+    { input: [2, [2, 4, 1]], expected: 2 },
+    { input: [2, [3, 2, 6, 5, 0, 3]], expected: 7 },
+    { input: [0, [1, 2, 3]], expected: 0 },
+    { input: [3, []], expected: 0 },
+  ]}
+>
+{`
+def solve(xs):
+    k, prices = xs
+    n = len(prices)
+    if n == 0 or k == 0:
+        return 0
+    if k >= n // 2:
+        return sum(max(0, prices[i] - prices[i - 1]) for i in range(1, n))
+    NEG = float("-inf")
+    hold = [NEG] * (k + 1)
+    cash = [0] * (k + 1)
+    for p in prices:
+        for t in range(k, 0, -1):
+            hold[t] = max(hold[t], cash[t - 1] - p)
+            cash[t] = max(cash[t], hold[t] + p)
+    return max(cash)
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n k)$ in the constrained branch, because the outer loop runs over the n
+prices and the inner loop runs over the k transaction slots, each doing
+constant work. In the unconstrained shortcut the cost is $O(n)$. Overall
+the algorithm is $O(n \min(k, n))$.
+
+### Space analysis
+
+$O(k)$ auxiliary. We keep two rolling arrays of length k+1 instead of the
+full n by k by 2 table. The optimization is safe because when we update
+hold[t] and cash[t] we only need the current-day value of cash[t-1] and
+hold[t], both already available in the rolling arrays. Iterating t from
+k down to 1 avoids clobbering cash[t-1] before it is read.
+
+### Proof of correctness
+
+We show by induction on the day index i that after processing prices[0..i]
+the values hold[t] and cash[t] equal the maximum profit achievable by day i
+with at most t opened transactions, subject to the holding state.
+
+Base case: before any day, cash[t] = 0 for all t (no money made, no shares
+held) and hold[t] is negative infinity (you cannot be holding a share you
+have not bought). This matches the definition.
+
+Inductive step: assume the invariant holds through day i-1, and process
+prices[i] = p. Fix t.
+
+- To end day i holding after t opened transactions, you either were
+  already holding yesterday (contributing the previous hold[t]) or you
+  open the t-th transaction today, which requires that yesterday you had
+  closed t-1 pairs (contributing cash[t-1] - p). The maximum of the two is
+  exactly the updated hold[t].
+
+- To end day i not holding after t closed transactions, you either were
+  already not holding yesterday (contributing the previous cash[t]) or you
+  close the t-th transaction today, which requires that yesterday you were
+  holding with t opened (contributing hold[t] + p, using the freshly
+  updated hold[t] that reflects the best holding state as of today — which
+  is also valid because we could equivalently not buy today and reuse
+  yesterday's holding). The maximum of the two is exactly the updated
+  cash[t].
+
+Because the inner loop visits t in decreasing order, cash[t-1] is still the
+previous day's value when we read it, so no information is overwritten
+prematurely. The invariant is preserved.
+
+After the last day the answer is max over t of cash[t], which is the best
+achievable profit with at most k transactions and no open position at the
+end. Selling before the end can never beat holding cash, so the optimum is
+always attained with no shares held.
+
+For the shortcut branch, if k is at least n/2 then there is room to open a
+transaction at every local minimum and close it at every local maximum, so
+the optimum equals the sum of positive consecutive differences — a standard
+telescoping argument.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 15 (Dynamic Programming).
+- [LeetCode 188 — Best Time to Buy and Sell Stock IV](https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iv/)

@@ -1,0 +1,190 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Prim's Algorithm
+
+Prim's algorithm grows a minimum spanning tree (MST) one vertex at a
+time, starting from an arbitrary root. At every step it looks at the
+cut between the vertices already in the tree and the vertices outside,
+and accepts the lightest edge crossing that cut. Implementing "lightest
+crossing edge" with a binary heap gives an $O(E \log V)$ algorithm that
+is in practice very close to Kruskal on dense graphs and often faster
+on sparse ones represented by adjacency lists.
+
+Prim's correctness is, like Kruskal's, a direct consequence of the *cut
+property* of MSTs — only the cut being exploited is different.
+
+The `solve` function takes `[n, edges]` where `edges` is a list of
+`[u, v, w]` triples on vertices $0, 1, \dots, n - 1$, and returns the
+total weight of the MST, or `-1` if the graph is disconnected.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+import heapq
+
+def solve(xs):
+    """xs = [n, edges]. Return total MST weight, or -1 if disconnected."""
+    n, edges = xs
+    if n == 0:
+        return 0
+    adj = [[] for _ in range(n)]
+    for u, v, w in edges:
+        adj[u].append((w, v))
+        adj[v].append((w, u))
+
+    in_tree = [False] * n
+    pq = [(0, 0)]      # (edge weight, vertex)
+    total = 0
+    taken = 0
+    while pq and taken < n:
+        w, u = heapq.heappop(pq)
+        if in_tree[u]:
+            continue
+        in_tree[u] = True
+        total += w
+        taken += 1
+        for nw, v in adj[u]:
+            if not in_tree[v]:
+                heapq.heappush(pq, (nw, v))
+    return total if taken == n else -1
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <queue>
+#include <tuple>
+#include <vector>
+
+long long prim(int n, const std::vector<std::array<int, 3>>& edges) {
+    if (n == 0) return 0;
+    std::vector<std::vector<std::pair<int, int>>> adj(n); // (w, v)
+    for (auto& e : edges) {
+        adj[e[0]].push_back({e[2], e[1]});
+        adj[e[1]].push_back({e[2], e[0]});
+    }
+    std::vector<char> in_tree(n, 0);
+    using P = std::pair<int, int>;
+    std::priority_queue<P, std::vector<P>, std::greater<P>> pq;
+    pq.push({0, 0});
+    long long total = 0;
+    int taken = 0;
+    while (!pq.empty() && taken < n) {
+        auto [w, u] = pq.top(); pq.pop();
+        if (in_tree[u]) continue;
+        in_tree[u] = 1;
+        total += w;
+        ++taken;
+        for (auto [nw, v] : adj[u])
+            if (!in_tree[v]) pq.push({nw, v});
+    }
+    return taken == n ? total : -1;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Prim's MST total weight"
+  tests={[
+    { input: [4, [[0, 1, 1], [1, 2, 2], [0, 2, 4], [2, 3, 3]]], expected: 6 },
+    { input: [1, []], expected: 0 },
+    { input: [3, [[0, 1, 5]]], expected: -1 },
+    { input: [5, [[0, 1, 1], [1, 2, 2], [2, 3, 3], [3, 4, 4], [0, 4, 10]]], expected: 10 },
+  ]}
+>
+{`
+import heapq
+
+def solve(xs):
+    n, edges = xs
+    if n == 0:
+        return 0
+    adj = [[] for _ in range(n)]
+    for u, v, w in edges:
+        adj[u].append((w, v))
+        adj[v].append((w, u))
+    in_tree = [False] * n
+    pq = [(0, 0)]
+    total = 0
+    taken = 0
+    while pq and taken < n:
+        w, u = heapq.heappop(pq)
+        if in_tree[u]:
+            continue
+        in_tree[u] = True
+        total += w
+        taken += 1
+        for nw, v in adj[u]:
+            if not in_tree[v]:
+                heapq.heappush(pq, (nw, v))
+    return total if taken == n else -1
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(E \log V)$ with a binary heap. Each edge is pushed at most once and
+popped at most once, and every heap operation is $O(\log V)$. With a
+Fibonacci heap the bound improves to $O(E + V \log V)$, which is
+theoretically optimal for the comparison model but rarely faster in
+practice.
+
+### Space analysis
+
+$O(V + E)$. The adjacency list is $O(V + E)$, the in-tree flag array is
+$O(V)$, and the heap holds at most $E$ entries.
+
+### Proof of correctness
+
+We prove Prim maintains the loop invariant: "the set $S$ of vertices
+marked `in_tree` together with the edges used to enter them forms a
+subtree of some MST $T$".
+
+*Base case.* $S = \{s\}$ is a subtree of every MST.
+
+*Inductive step.* Suppose the invariant holds, and Prim is about to add
+a vertex $u \notin S$ via the minimum-weight crossing edge $e = (x, u)$
+with $x \in S$. Consider the cut $(S, V \setminus S)$. Because the heap
+always yields the smallest crossing edge first — stale entries to
+already-in-tree vertices are filtered by the `in_tree` check — $e$ is a
+minimum-weight edge across the cut $(S, V \setminus S)$.
+
+By the *cut property* (proved in the Kruskal page), some MST contains
+$e$. Formally: pick any MST $T$ that extends $S$. If $e \in T$, then
+$T$ already extends $S \cup \{u\}$. Otherwise $T \cup \{e\}$ contains a
+unique cycle $C$, and $C$ must contain another edge $f$ crossing the
+cut; since $w(e) \le w(f)$, replacing $f$ by $e$ yields another MST
+$T' = (T \setminus \{f\}) \cup \{e\}$ that extends $S \cup \{u\}$ with
+$w(T') \le w(T)$. Either way, the extended $S$ remains a subtree of an
+MST, and the invariant is preserved.
+
+When the loop ends with $|S| = n$, the accumulated edges form an MST.
+If it ends earlier, some vertex is unreachable from the start, so the
+graph is disconnected and no spanning tree exists.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 23 (Minimum Spanning Trees).
+- Prim, R. C. (1957). "Shortest connection networks and some generalizations." *Bell System Technical Journal*, 36(6), 1389-1401.
+- [cp-algorithms — Minimum spanning tree (Prim)](https://cp-algorithms.com/graph/mst_prim.html)

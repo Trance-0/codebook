@@ -4,6 +4,7 @@ sidebar_position: 3
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Heap Sort
 
@@ -17,10 +18,22 @@ In python, min heap is implemented by `heapq` library.
 
 In C++, we can use `priority_queue` to implement the heap.
 
+A heap is a complete binary tree that satisfies the *heap property*: every
+parent is less than or equal to its children (min-heap) or greater than or
+equal to its children (max-heap). Because a complete binary tree can be stored
+contiguously in an array, the heap doubles as an in-place priority queue.
+
+Heap sort exploits this by first building a max-heap from the input, then
+repeatedly swapping the root (the current maximum) with the last unsorted
+slot and shrinking the heap by one. After $n-1$ extractions, the array is
+sorted in ascending order.
+
 ## Codes
 
 <Tabs>
 <TabItem value="Python" label="Python">
+
+Basic usage of the `heapq` module (min-heap):
 
 ```python
 import heapq
@@ -31,11 +44,25 @@ heapq.heappush(heap, 2)
 heapq.heappush(heap, 3)
 
 print(heapq.heappop(heap))
-``` 
+```
+
+A full heap sort built on top of `heapq`:
+
+```python
+import heapq
+
+def solve(xs):
+    """Return xs sorted ascending using a heap."""
+    h = list(xs)
+    heapq.heapify(h)             # O(n) bottom-up build
+    return [heapq.heappop(h) for _ in range(len(h))]
+```
 
 </TabItem>
 
 <TabItem value="C++" label="C++">
+
+Basic usage of `std::priority_queue` (max-heap by default):
 
 ```cpp
 #include <queue>
@@ -49,14 +76,87 @@ heap.push(3);
 cout << heap.top() << endl;
 ```
 
+In-place heap sort using the lower-level STL routines:
+
+```cpp
+#include <algorithm>
+#include <vector>
+
+std::vector<int> heap_sort(std::vector<int> xs) {
+    std::make_heap(xs.begin(), xs.end());           // max-heap, O(n)
+    for (auto end = xs.end(); end != xs.begin(); --end) {
+        std::pop_heap(xs.begin(), end);             // move max to end-1
+    }
+    return xs;                                      // now ascending
+}
+```
+
 </TabItem>
 </Tabs>
 
-# Description
+## Example
 
-Time complexity: $O(n \log n)$
+<PyListSnippet
+  title="Heap sort"
+  tests={[
+    { input: [5, 2, 4, 1, 3], expected: [1, 2, 3, 4, 5] },
+    { input: [], expected: [] },
+    { input: [7], expected: [7] },
+    { input: [3, 3, 1, 2, 1], expected: [1, 1, 2, 3, 3] },
+  ]}
+>
+{`
+import heapq
 
-The heap structure can be maintained by AVL tree.
+def solve(xs):
+    h = list(xs)
+    heapq.heapify(h)
+    return [heapq.heappop(h) for _ in range(len(h))]
+`}
+</PyListSnippet>
 
-Space complexity: $O(n)$
+## Description
 
+Time complexity: $O(n \log n)$. The heap structure can also be maintained by
+an AVL tree if you want explicit balanced-tree guarantees, but the array
+representation is simpler and faster in practice.
+
+Space complexity: $O(n)$ for the Python version, $O(1)$ auxiliary when the
+sort is done in place on the input array.
+
+### Run time analysis
+
+$O(n \log n)$.
+
+Building the heap with `heapify` runs in $O(n)$ by the classical siftdown
+argument — the sum of heights over all nodes is bounded by a convergent
+geometric-style series and collapses to $O(n)$. Each of the $n$ extractions
+does one siftdown of depth $O(\log n)$, giving $O(n \log n)$ overall. The
+bound is tight in the worst and average case.
+
+### Space analysis
+
+$O(1)$ auxiliary when implemented in-place on the input array, as in the C++
+version above. The Python version allocates a new list and thus uses $O(n)$
+extra space — that's a cost of working with immutable integers and the
+`heapq` API rather than a property of the algorithm itself.
+
+### Proof of correctness
+
+Let $A[0..n)$ hold the input. After `make_heap`, $A$ satisfies the max-heap
+property: $A[\lfloor (i-1)/2 \rfloor] \ge A[i]$ for all $i > 0$. We then
+maintain the invariant "after $k$ iterations of the extraction loop, $A[n-k..n)$
+contains the $k$ largest elements in sorted ascending order, and $A[0..n-k)$
+is a max-heap". The base case $k = 0$ is the state right after `make_heap`.
+On step $k+1$, `pop_heap` swaps $A[0]$ (the current max) with $A[n-k-1]$,
+then restores the heap on $A[0..n-k-1)$ by sifting down — preserving both
+halves of the invariant. After $n$ iterations, $A$ is sorted ascending.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 6 (Heapsort).
+- [cp-algorithms — Heap and heap sort](https://cp-algorithms.com/data_structures/heap.html)

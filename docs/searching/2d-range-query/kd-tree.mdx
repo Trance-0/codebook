@@ -1,0 +1,211 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# KD Tree
+
+A kd-tree is a binary space partitioning tree that recursively splits a set of
+$k$-dimensional points by alternating along the coordinate axes. At depth $d$
+the split axis is $d \bmod k$, so in the plane the root splits by $x$, its
+children split by $y$, the grandchildren split by $x$ again, and so on. The
+split value is usually chosen as the median of the current point set so the
+tree stays balanced.
+
+Once built, the tree answers orthogonal range queries by pruning: whenever the
+query rectangle is disjoint from a subtree's bounding region, the whole
+subtree is skipped; whenever the bounding region is fully contained, every
+point in the subtree is reported. Only the "boundary" subtrees need to be
+explored recursively, and a classical analysis of de Berg et al. bounds the
+number of visited nodes by $O(\sqrt n + m)$ in two dimensions, where $m$ is
+the output size.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    points, queries = xs
+
+    def build(idx, depth):
+        if not idx:
+            return None
+        axis = depth % 2
+        idx.sort(key=lambda i: points[i][axis])
+        mid = len(idx) // 2
+        return {
+            "i": idx[mid],
+            "axis": axis,
+            "left": build(idx[:mid], depth + 1),
+            "right": build(idx[mid + 1:], depth + 1),
+        }
+
+    root = build(list(range(len(points))), 0)
+
+    def query(node, x1, y1, x2, y2, out):
+        if node is None:
+            return
+        x, y = points[node["i"]]
+        if x1 <= x <= x2 and y1 <= y <= y2:
+            out.append(node["i"])
+        axis = node["axis"]
+        lo, hi = (x1, x2) if axis == 0 else (y1, y2)
+        val = points[node["i"]][axis]
+        if lo <= val:
+            query(node["left"], x1, y1, x2, y2, out)
+        if val <= hi:
+            query(node["right"], x1, y1, x2, y2, out)
+
+    result = []
+    for x1, y1, x2, y2 in queries:
+        out = []
+        query(root, x1, y1, x2, y2, out)
+        result.append(sorted(out))
+    return result
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <vector>
+
+struct KdNode {
+    int idx, axis;
+    KdNode *left = nullptr, *right = nullptr;
+};
+
+struct KdTree {
+    std::vector<std::pair<int,int>> pts;
+    KdNode* root = nullptr;
+
+    KdNode* build(std::vector<int>& ids, int depth) {
+        if (ids.empty()) return nullptr;
+        int axis = depth % 2;
+        std::sort(ids.begin(), ids.end(), [&](int a, int b) {
+            return axis == 0 ? pts[a].first < pts[b].first
+                              : pts[a].second < pts[b].second;
+        });
+        int mid = ids.size() / 2;
+        auto* node = new KdNode{ids[mid], axis};
+        std::vector<int> L(ids.begin(), ids.begin() + mid);
+        std::vector<int> R(ids.begin() + mid + 1, ids.end());
+        node->left  = build(L, depth + 1);
+        node->right = build(R, depth + 1);
+        return node;
+    }
+
+    void query(KdNode* n, int x1, int y1, int x2, int y2,
+               std::vector<int>& out) const {
+        if (!n) return;
+        auto [x, y] = pts[n->idx];
+        if (x1 <= x && x <= x2 && y1 <= y && y <= y2) out.push_back(n->idx);
+        int lo = n->axis == 0 ? x1 : y1;
+        int hi = n->axis == 0 ? x2 : y2;
+        int v  = n->axis == 0 ? x  : y;
+        if (lo <= v) query(n->left,  x1, y1, x2, y2, out);
+        if (v <= hi) query(n->right, x1, y1, x2, y2, out);
+    }
+};
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="2D range reporting with a kd-tree"
+  tests={[
+    {
+      input: [
+        [[1, 1], [2, 5], [4, 4], [5, 2], [7, 6], [8, 1]],
+        [[0, 0, 5, 5], [3, 0, 8, 3]]
+      ],
+      expected: [[0, 1, 2, 3], [3, 5]]
+    }
+  ]}
+>
+{`
+def solve(xs):
+    points, queries = xs
+
+    def build(idx, depth):
+        if not idx:
+            return None
+        axis = depth % 2
+        idx.sort(key=lambda i: points[i][axis])
+        mid = len(idx) // 2
+        return {
+            "i": idx[mid],
+            "axis": axis,
+            "left": build(idx[:mid], depth + 1),
+            "right": build(idx[mid + 1:], depth + 1),
+        }
+
+    root = build(list(range(len(points))), 0)
+
+    def query(node, x1, y1, x2, y2, out):
+        if node is None:
+            return
+        x, y = points[node["i"]]
+        if x1 <= x <= x2 and y1 <= y <= y2:
+            out.append(node["i"])
+        axis = node["axis"]
+        lo, hi = (x1, x2) if axis == 0 else (y1, y2)
+        val = points[node["i"]][axis]
+        if lo <= val:
+            query(node["left"], x1, y1, x2, y2, out)
+        if val <= hi:
+            query(node["right"], x1, y1, x2, y2, out)
+
+    result = []
+    for x1, y1, x2, y2 in queries:
+        out = []
+        query(root, x1, y1, x2, y2, out)
+        result.append(sorted(out))
+    return result
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+Build is $O(n \log n)$ and each 2D orthogonal range report runs in
+$O(\sqrt n + m)$ where $m$ is the number of reported points. The square-root
+bound follows from counting how many subtrees at alternating levels can
+straddle one side of the query rectangle.
+
+### Space analysis
+
+$O(n)$. The tree stores each input point once and the pointer overhead is
+linear in the number of nodes.
+
+### Proof of correctness
+
+Every reported point satisfies the query rectangle because we only push a
+point into the output after an explicit in-range test. Conversely, for a
+point $p$ inside the rectangle, induction on depth shows the recursion
+reaches the leaf of $p$: at each level the splitting coordinate of $p$ lies
+in the query interval on that axis, so at least one of the two "lo/hi"
+guards fires and the search descends into the side containing $p$. See de
+Berg et al., Chapter 5, for the full pruning argument and the $O(\sqrt n)$
+query bound.
+
+## Extensions
+
+## Applications
+
+## References
+
+- de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 5 (Orthogonal Range Searching).
+- Bentley, J. L. "Multidimensional binary search trees used for associative searching." *Communications of the ACM*, 1975.
+- [cp-algorithms — K-d tree](https://cp-algorithms.com/geometry/kd-tree.html)

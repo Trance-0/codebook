@@ -4,19 +4,242 @@ sidebar_position: 1
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Trivial Sort
 
-Sorting is a fundamental problem in computer science. It relates to many other problems. (useless nonsense)
+Sorting is a fundamental problem in computer science. It relates to many
+other problems. (useless nonsense)
+
+Before tackling the $O(n \log n)$ comparison-based sorts (merge, heap,
+quick), it is worth keeping a handful of "trivial" algorithms in your
+toolbelt: they have tiny constants, are cache friendly, fit in a few lines,
+and are unbeatable on very small inputs. Counting sort and radix sort also
+serve as the standard counter-example to the $\Omega(n \log n)$ lower bound —
+that bound applies only to *comparison-based* sorting.
+
+This page collects the usual suspects: bubble sort, selection sort,
+insertion sort, counting sort, radix sort, shell sort, and bucket sort.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def bubble_sort(xs):
+    a = list(xs)
+    n = len(a)
+    for i in range(n):
+        swapped = False
+        for j in range(n - 1 - i):
+            if a[j] > a[j + 1]:
+                a[j], a[j + 1] = a[j + 1], a[j]
+                swapped = True
+        if not swapped:
+            break
+    return a
+
+
+def selection_sort(xs):
+    a = list(xs)
+    n = len(a)
+    for i in range(n):
+        k = min(range(i, n), key=lambda t: a[t])
+        a[i], a[k] = a[k], a[i]
+    return a
+
+
+def insertion_sort(xs):
+    a = list(xs)
+    for i in range(1, len(a)):
+        x, j = a[i], i - 1
+        while j >= 0 and a[j] > x:
+            a[j + 1] = a[j]
+            j -= 1
+        a[j + 1] = x
+    return a
+
+
+def counting_sort(xs):
+    if not xs:
+        return []
+    lo, hi = min(xs), max(xs)
+    cnt = [0] * (hi - lo + 1)
+    for v in xs:
+        cnt[v - lo] += 1
+    out = []
+    for i, c in enumerate(cnt):
+        out.extend([i + lo] * c)
+    return out
+
+
+def radix_sort(arr):
+    max_digit = len(str(max(arr)))
+    for digit in range(max_digit):
+        buckets = [[] for _ in range(10)]
+        for num in arr:
+            buckets[num // (10 ** digit) % 10].append(num)
+        arr = [num for bucket in buckets for num in bucket]
+    return arr
+
+
+def shell_sort(arr, gap_sequence=(701, 301, 132, 57, 23, 10, 4, 1)):
+    n = len(arr)
+    for gap in gap_sequence:
+        for i in range(gap, n):
+            temp = arr[i]
+            j = i
+            while j >= gap and arr[j - gap] > temp:
+                arr[j] = arr[j - gap]
+                j -= gap
+            arr[j] = temp
+    return arr
+
+
+def bucket_sort(xs, k=10):
+    if not xs:
+        return []
+    lo, hi = min(xs), max(xs)
+    if lo == hi:
+        return list(xs)
+    buckets = [[] for _ in range(k)]
+    span = (hi - lo) / k
+    for v in xs:
+        idx = min(int((v - lo) / span), k - 1)
+        buckets[idx].append(v)
+    out = []
+    for b in buckets:
+        out.extend(insertion_sort(b))
+    return out
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <vector>
+#include <queue>
+
+std::vector<int> bubble_sort(std::vector<int> a) {
+    int n = a.size();
+    for (int i = 0; i < n; ++i) {
+        bool swapped = false;
+        for (int j = 0; j < n - 1 - i; ++j) {
+            if (a[j] > a[j + 1]) {
+                std::swap(a[j], a[j + 1]);
+                swapped = true;
+            }
+        }
+        if (!swapped) break;
+    }
+    return a;
+}
+
+std::vector<int> selection_sort(std::vector<int> a) {
+    int n = a.size();
+    for (int i = 0; i < n; ++i) {
+        int k = i;
+        for (int j = i + 1; j < n; ++j)
+            if (a[j] < a[k]) k = j;
+        std::swap(a[i], a[k]);
+    }
+    return a;
+}
+
+std::vector<int> insertion_sort(std::vector<int> a) {
+    for (int i = 1; i < (int)a.size(); ++i) {
+        int x = a[i], j = i - 1;
+        while (j >= 0 && a[j] > x) { a[j + 1] = a[j]; --j; }
+        a[j + 1] = x;
+    }
+    return a;
+}
+
+// Original radix-sort sketch (note: (10 ** digit) is not valid C++, use
+// a precomputed power as in the revised version below)
+void radix_sort(std::vector<int>& arr) {
+    int max_digit = 0;
+    for (int num : arr) {
+        max_digit = std::max(max_digit, (int)log10(num) + 1);
+    }
+    int exp = 1;
+    for (int digit = 0; digit < max_digit; digit++, exp *= 10) {
+        std::vector<std::queue<int>> buckets(10);
+        for (int num : arr) {
+            buckets[(num / exp) % 10].push(num);
+        }
+        arr.clear();
+        for (int i = 0; i < 10; i++) {
+            while (!buckets[i].empty()) {
+                arr.push_back(buckets[i].front());
+                buckets[i].pop();
+            }
+        }
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Insertion sort"
+  tests={[
+    { input: [5, 2, 4, 1, 3], expected: [1, 2, 3, 4, 5] },
+    { input: [], expected: [] },
+    { input: [1], expected: [1] },
+    { input: [3, 3, 3], expected: [3, 3, 3] },
+  ]}
+>
+{`
+def solve(xs):
+    a = list(xs)
+    for i in range(1, len(a)):
+        x, j = a[i], i - 1
+        while j >= 0 and a[j] > x:
+            a[j + 1] = a[j]
+            j -= 1
+        a[j + 1] = x
+    return a
+`}
+</PyListSnippet>
+
+<PyListSnippet
+  title="Counting sort (non-comparison)"
+  tests={[
+    { input: [4, 2, 2, 8, 3, 3, 1], expected: [1, 2, 2, 3, 3, 4, 8] },
+    { input: [-2, 0, -1, 3, 2], expected: [-2, -1, 0, 2, 3] },
+  ]}
+>
+{`
+def solve(xs):
+    if not xs:
+        return []
+    lo, hi = min(xs), max(xs)
+    cnt = [0] * (hi - lo + 1)
+    for v in xs:
+        cnt[v - lo] += 1
+    out = []
+    for i, c in enumerate(cnt):
+        out.extend([i + lo] * c)
+    return out
+`}
+</PyListSnippet>
 
 ## Description
 
-Since the idea is so stupid, we will not write  code for it. In this topic page, we only consider the sorting problem in general.
+Since the idea is so simple, we only lay out the main variants here, then
+benchmark them against the comparison-based sorts on the other pages.
 
 ### Bubble Sort
 
-One trivial sort is bubble sort. 
-The key is to swap the adjacent elements if they are in the wrong order.
+One trivial sort is bubble sort. The key is to swap the adjacent elements
+if they are in the wrong order.
 
 Time complexity: $O(n^2)$
 
@@ -24,7 +247,8 @@ Space complexity: $O(1)$ (no extra space is used)
 
 ### Selection Sort
 
-The key is to find the minimum element in the unsorted part and swap it with the first element of the unsorted part.
+The key is to find the minimum element in the unsorted part and swap it
+with the first element of the unsorted part.
 
 Time complexity: $O(n^2)$
 
@@ -34,7 +258,8 @@ Space complexity: $O(1)$ (no extra space is used)
 
 This part is interesting because it is not a comparison-based sort.
 
-The key is to count the number of each element and then place them in the correct position.
+The key is to count the number of each element and then place them in the
+correct position.
 
 Time complexity: $O(n+k)$
 
@@ -48,56 +273,12 @@ It is a generalization of counting sort.
 
 It is a stable sort.
 
-It is a in-place sort.
-
-<Tabs>
-<TabItem value="Python" label="Python">
-
-```python
-def radix_sort(arr):
-    max_digit = len(str(max(arr)))
-    for digit in range(max_digit):
-        buckets = [[] for _ in range(10)]
-        for num in arr:
-            buckets[num // (10 ** digit) % 10].append(num)
-        arr = [num for bucket in buckets for num in bucket]
-    return arr
-```
-
-</TabItem>
-
-<TabItem value="C++" label="C++">
-
-```cpp
-#include <vector>
-#include <queue>
-
-void radix_sort(vector<int>& arr) {
-    int max_digit = 0;
-    for (int num : arr) {
-        max_digit = max(max_digit, (int)log10(num) + 1);
-    }
-    for (int digit = 0; digit < max_digit; digit++) {
-        vector<queue<int>> buckets(10);
-        for (int num : arr) {
-            buckets[num / (10 ** digit) % 10].push(num);
-        }
-        arr.clear();
-        for (int i = 0; i < 10; i++) {
-            while (!buckets[i].empty()) {
-                arr.push_back(buckets[i].front());
-                buckets[i].pop();
-            }
-        }
-    }
-}
-```
-</TabItem>
-</Tabs>
+It is an in-place sort.
 
 ### Shell Sort
 
-The key is to sort the elements that are far apart first, and then sort the elements that are close together.
+The key is to sort the elements that are far apart first, and then sort the
+elements that are close together.
 
 This is my favorite sort algorithm.
 
@@ -107,25 +288,61 @@ The ideal gap sequence found so far experimentally is $[1,4,10,23,57,132,301,701
 
 Space complexity: $O(1)$ (no extra space is used)
 
-
-<Tabs>
-<TabItem value="Python" label="Python">
-
-```python
-def shell_sort(arr,gap_sequence):
-    n = len(arr)
-    for gap in gap_sequence:
-        for i in range(gap, n):
-            temp = arr[i]
-            j = i
-            while j >= gap and arr[j - gap] > temp:
-                arr[j] = arr[j - gap]
-                j -= gap
-            arr[j] = temp
-    return arr
-```
-
-</TabItem>
-</Tabs>
-
 ### Bucket Sort
+
+Bucket sort partitions the input into $k$ equal-width buckets, sorts each
+bucket with an inner sort (typically insertion sort), and concatenates the
+results. It is linear on average when the input is drawn from a uniform
+distribution.
+
+### Run time analysis
+
+- Bubble / selection / insertion sort: $O(n^2)$ worst and average case.
+  Insertion sort is $O(n + k)$ where $k$ is the number of inversions, which
+  makes it the fastest option for nearly-sorted input and for very small $n$.
+- Counting sort: $O(n + r)$ where $r = \max - \min + 1$ is the range of
+  keys. Linear when $r = O(n)$.
+- Radix sort: $O(d \cdot (n + b))$ for $d$ digits in base $b$. With $b = 10$
+  and integer keys bounded by a polynomial in $n$, this collapses to $O(n)$.
+- Shell sort: dependent on the gap sequence. The Ciura sequence
+  $[1, 4, 10, 23, 57, 132, 301, 701]$ gives the best empirical results and
+  is conjectured to run in $O(n \log^2 n)$.
+- Bucket sort: $O(n + k)$ on average when input is uniformly distributed
+  across $k$ buckets, $O(n^2)$ worst case (all elements land in one bucket).
+
+### Space analysis
+
+- Bubble, selection, insertion, shell sort: $O(1)$ auxiliary — they sort in
+  place.
+- Counting sort: $O(r)$ for the count array.
+- Radix sort: $O(n + b)$ for buckets.
+- Bucket sort: $O(n + k)$ for the buckets plus the inner sort.
+
+### Proof of correctness
+
+- **Insertion sort** maintains the loop invariant "after iteration $i$,
+  $a[0..i]$ is a sorted permutation of the original $a[0..i]$". The inner
+  loop shifts every element strictly greater than $x$ one slot to the right,
+  which leaves the correct insertion slot for $x$. At termination, $i = n$,
+  so the whole array is sorted.
+- **Counting sort** is correct because `cnt[i - lo]` is exactly the
+  multiplicity of $i$ in the input (the first loop is a bijection between
+  input elements and increments), so emitting $i$ exactly `cnt[i - lo]` times
+  in increasing order of $i$ produces a sorted permutation of the input.
+- **Radix sort** is correct because the underlying per-digit bucket
+  distribution is stable: after sorting by the $d$-th digit, the output is
+  sorted by digits $0 \ldots d$ treated as a composite key, by induction on
+  $d$. After the most significant digit, the output is fully sorted.
+- The other variants (bubble, selection, shell, bucket) admit analogous
+  invariant-based arguments and reduce to the same "swap maintains
+  permutation, comparisons drive toward sortedness" structure.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapters 2, 8 (elementary and linear-time sorts).
+- Ciura, M. (2001). *Best Increments for the Average Case of Shellsort.* FCT 2001.
+- [cp-algorithms — Sortings](https://cp-algorithms.com/)

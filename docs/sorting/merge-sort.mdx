@@ -4,24 +4,27 @@ sidebar_position: 2
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Merge Sort
 
 Merge sort is a divide-and-conquer algorithm that divides the input array into two halves, recursively sorts each half, and then merges the two sorted halves.
 
-## Time Complexity
+It splits the input in half, recursively sorts each half, and then merges
+the two sorted halves into a single sorted sequence in linear time. The
+"merge" step is the heart of the idea: if you already have two sorted piles,
+you can produce one sorted pile by repeatedly taking the smaller of the two
+front cards — no comparisons are wasted.
 
-The time complexity of merge sort is $O(n \log n)$ in all cases.
-
-## Space Complexity
-
-The space complexity of merge sort is $O(n)$ in all cases.
+Merge sort is stable, works equally well on arrays and linked lists, and is
+the basis for classical external sorting (sort more data than fits in RAM
+using sequential tape/disk reads).
 
 ## Codes
 
 <Tabs>
 <TabItem value="Java" label="Java">
+
 ```java
 private int[] MergeSort(int[] arr){
     /* Sample merge sort algorithm
@@ -58,8 +61,13 @@ private int[] MergeSort(int[] arr){
     }
 }
 ```
+
 </TabItem>
+
 <TabItem value="Python" label="Python">
+
+Concise reference version (mutates the pops off each half):
+
 ```python
 def merge_sort(arr) -> list:
     """
@@ -81,7 +89,133 @@ def merge_sort(arr) -> list:
     arr.extend(right)
     return arr
 ```
+
+Index-based variant used by the interactive runner below (avoids the
+`list.pop(0)` cost):
+
+```python
+def solve(xs):
+    if len(xs) <= 1:
+        return list(xs)
+    mid = len(xs) // 2
+    left = solve(xs[:mid])
+    right = solve(xs[mid:])
+
+    merged, i, j = [], 0, 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            merged.append(left[i]); i += 1
+        else:
+            merged.append(right[j]); j += 1
+    merged.extend(left[i:])
+    merged.extend(right[j:])
+    return merged
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+
+std::vector<int> merge_sort(std::vector<int> xs) {
+    if (xs.size() <= 1) return xs;
+    size_t mid = xs.size() / 2;
+    std::vector<int> left(xs.begin(), xs.begin() + mid);
+    std::vector<int> right(xs.begin() + mid, xs.end());
+    left = merge_sort(std::move(left));
+    right = merge_sort(std::move(right));
+
+    std::vector<int> out;
+    out.reserve(xs.size());
+    size_t i = 0, j = 0;
+    while (i < left.size() && j < right.size()) {
+        if (left[i] <= right[j]) out.push_back(left[i++]);
+        else                     out.push_back(right[j++]);
+    }
+    out.insert(out.end(), left.begin()  + i, left.end());
+    out.insert(out.end(), right.begin() + j, right.end());
+    return out;
+}
+```
+
 </TabItem>
 </Tabs>
 
+## Example
 
+<PyListSnippet
+  title="Merge sort"
+  tests={[
+    { input: [5, 2, 4, 1, 3], expected: [1, 2, 3, 4, 5] },
+    { input: [], expected: [] },
+    { input: [2, 2, 1, 1], expected: [1, 1, 2, 2] },
+    { input: [9, 8, 7, 6, 5, 4, 3, 2, 1], expected: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+  ]}
+>
+{`
+def solve(xs):
+    if len(xs) <= 1:
+        return list(xs)
+    mid = len(xs) // 2
+    left = solve(xs[:mid])
+    right = solve(xs[mid:])
+    merged, i, j = [], 0, 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            merged.append(left[i]); i += 1
+        else:
+            merged.append(right[j]); j += 1
+    merged.extend(left[i:])
+    merged.extend(right[j:])
+    return merged
+`}
+</PyListSnippet>
+
+## Description
+
+The time complexity of merge sort is $O(n \log n)$ in all cases.
+
+The space complexity of merge sort is $O(n)$ in all cases.
+
+### Run time analysis
+
+$O(n \log n)$ in the best, average, and worst case.
+
+The recurrence is $T(n) = 2 T(n/2) + \Theta(n)$, where the $\Theta(n)$ comes
+from the merge step. By the master theorem (case 2), $T(n) = \Theta(n \log n)$.
+
+### Space analysis
+
+$O(n)$ auxiliary. Each merge allocates a temporary buffer proportional to
+the slice it is merging, and the recursion tree adds $O(\log n)$ stack depth.
+A careful iterative implementation can reuse one $O(n)$ scratch buffer.
+
+### Proof of correctness
+
+By strong induction on $n = \mathrm{len}(xs)$.
+
+- *Base case:* $n \le 1$. A list of length $\le 1$ is already sorted, and the
+  algorithm returns it unchanged.
+- *Inductive step:* Assume the algorithm is correct on all inputs of size
+  strictly less than $n$. The recursive calls receive inputs of size
+  $\lfloor n/2 \rfloor$ and $\lceil n/2 \rceil$, both strictly smaller, and
+  by the inductive hypothesis they return sorted lists `left` and `right`.
+  The merge step maintains the invariant that `merged` is sorted and contains
+  exactly the elements already drained from `left` and `right`. At each step
+  the smaller of `left[i]` and `right[j]` is appended, which preserves
+  sortedness because every element still in `left` or `right` is at least
+  `left[i]` / `right[j]` respectively. When one side empties the remainder
+  of the other side is appended in order. The final result is a sorted
+  permutation of `xs`.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 2.3 (Merge sort).
+- Knuth. *The Art of Computer Programming*, Vol. 3, Section 5.2.4.
+- [cp-algorithms — Merge sort tree](https://cp-algorithms.com/data_structures/merge_sort_tree.html)

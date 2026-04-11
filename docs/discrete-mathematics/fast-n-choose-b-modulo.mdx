@@ -1,0 +1,265 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Fast N Choose B Modulo
+
+Fast N Choose B Modulo is a technique used to compute $\binom{n}{b} \mod m$ efficiently when $n$ and $b$ are large.
+
+It states as follows:
+
+We want to compute the binomial coefficient C(n, k) mod p, where p is a
+prime and n may be very large. Computing C(n, k) directly is infeasible
+because the numerator n! overflows instantly, and we cannot divide freely
+modulo p. The standard recipe is:
+
+1. Precompute factorials f[i] = i! mod p for i from 0 up to n.
+2. Use Fermat's little theorem to get the modular inverse of f[k] and
+   f[n - k]: since p is prime and f[i] is not divisible by p when i is
+   less than p, we have f[i]^(p-1) equals 1 mod p, so f[i]^(p-2) is the
+   modular inverse of f[i].
+3. Return f[n] times inv(f[k]) times inv(f[n - k]) mod p.
+
+Each modular inverse is a single call to fast modulo exponentiation, so
+after the $O(n)$ factorial precomputation the actual binomial query is
+$O(\log p)$. If you need many queries for different (n, k) with the same
+prime, precompute all factorials and their inverses once and each query
+becomes $O(1)$ — the "precomputed factorials" idiom below shows the single
+query version.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+Original compact version (computes the sliding numerator directly, skipping
+the full factorial table):
+
+```python
+def n_choose_k_modulo(n, k, m):
+    """
+    Fast N Choose B Modulo
+    :param n: n
+    :param k: k
+    :param m: modulo m
+    :return: n choose k modulo m
+    """
+    # Precompute A = (n-1)! / (n-1-k)!  A is n-1 choose k
+    A = 1
+    # avoid multiplication by zero
+    if n-k-1!=0 and k!=0:
+        for i in range(n-k, n):
+            A = A * i % m
+        # Compute k! properly (1*2*...*k), not including zero
+        kf = 1
+        for i in range(1, k+1):
+            kf = kf * i % m
+        
+        # Modular inverse of kf via Fermat: kf^(M-2) mod M
+        inv_kf = pow(kf, m-2, m)
+        # print(A, kf, inv_kf)
+        # Multiply A by inv_kf, then by B and m
+        A = A * inv_kf % m
+    return A
+```
+
+Version that plays nicely with the `solve(xs)` harness and precomputes the
+full factorial table:
+
+```python
+def solve(xs):
+    """xs is [n, k, p]; return C(n, k) mod p for prime p."""
+    n, k, p = xs
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1 % p
+    # Precompute factorials mod p up to n.
+    fact = [1] * (n + 1)
+    for i in range(1, n + 1):
+        fact[i] = fact[i - 1] * i % p
+    # Modular inverse via Fermat's little theorem: a^(p-2) mod p.
+    inv_k = pow(fact[k], p - 2, p)
+    inv_nk = pow(fact[n - k], p - 2, p)
+    return fact[n] * inv_k % p * inv_nk % p
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+
+long long mod_pow(long long base, long long exp, long long mod) {
+    long long result = 1 % mod;
+    base %= mod;
+    if (base < 0) base += mod;
+    while (exp > 0) {
+        if (exp & 1LL) result = (__int128)result * base % mod;
+        base = (__int128)base * base % mod;
+        exp >>= 1;
+    }
+    return result;
+}
+
+long long n_choose_k_mod_p(long long n, long long k, long long p) {
+    if (k < 0 || k > n) return 0;
+    if (k == 0 || k == n) return 1 % p;
+    std::vector<long long> fact(n + 1, 1);
+    for (long long i = 1; i <= n; ++i) {
+        fact[i] = (__int128)fact[i - 1] * i % p;
+    }
+    long long inv_k = mod_pow(fact[k], p - 2, p);
+    long long inv_nk = mod_pow(fact[n - k], p - 2, p);
+    long long res = (__int128)fact[n] * inv_k % p;
+    res = (__int128)res * inv_nk % p;
+    return res;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Binomial coefficient mod prime"
+  tests={[
+    { input: [5, 2, 1000000007], expected: 10 },
+    { input: [10, 3, 1000000007], expected: 120 },
+    { input: [6, 0, 13], expected: 1 },
+    { input: [100, 50, 1000000007], expected: 538992043 },
+  ]}
+>
+{`
+def solve(xs):
+    n, k, p = xs
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1 % p
+    fact = [1] * (n + 1)
+    for i in range(1, n + 1):
+        fact[i] = fact[i - 1] * i % p
+    inv_k = pow(fact[k], p - 2, p)
+    inv_nk = pow(fact[n - k], p - 2, p)
+    return fact[n] * inv_k % p * inv_nk % p
+`}
+</PyListSnippet>
+
+## Description
+
+The proof directly follows from the definition of binomial coefficient.
+
+### Run time analysis
+
+$O(n + \log p)$. The factorial precomputation runs n modular multiplies.
+Each modular inverse is one call to fast exponentiation and costs
+$O(\log p)$. The final combination is a constant number of modular
+multiplies. When many queries share the same prime, amortize the
+precomputation and each query drops to $O(\log p)$ or, with inverse
+factorials precomputed, $O(1)$.
+
+### Space analysis
+
+$O(n)$ for the factorial table. Only a handful of scalars are needed
+beyond that. If n is too large to tabulate directly you must switch to a
+different technique such as Lucas's theorem, which is outside the scope
+of this page.
+
+### Memory analysis
+
+The compact version that walks the numerator directly uses only $O(1)$
+auxiliary memory, since it never materializes the full factorial table.
+
+### Proof of correctness
+
+The definition gives C(n, k) = n! / (k! times (n-k)!). Working modulo a
+prime p, we need the multiplicative inverse of k! and of (n-k)! in the
+field of integers mod p. Both are invertible exactly when they are not
+divisible by p; we assume this standard setting (otherwise Lucas's
+theorem applies).
+
+**Fermat's little theorem.** For any integer a that is not divisible by
+the prime p, a^(p-1) is congruent to 1 mod p. Multiplying both sides by
+the inverse of a gives a^(p-2) congruent to the inverse of a mod p. This
+justifies computing the modular inverse of f as pow(f, p - 2, p).
+
+**Correctness of the formula.** Let F[i] denote the true value of i! mod
+p. A straightforward induction on i shows fact[i] equals F[i]: fact[0]
+equals 1 equals F[0], and fact[i] equals fact[i-1] times i mod p equals
+F[i-1] times i mod p equals F[i]. By Fermat's little theorem, inv_k
+equals the inverse of F[k] and inv_nk equals the inverse of F[n - k] in
+the field of integers mod p. Therefore the returned value is F[n] times
+inv(F[k]) times inv(F[n - k]) mod p, which equals n! times (k!)^(-1)
+times ((n-k)!)^(-1) mod p, which equals C(n, k) mod p.
+
+Edge cases (k less than 0, k greater than n, or k in 0 or n) are handled
+by early returns and match the combinatorial definition.
+
+## Extensions
+
+No extensions found.
+
+## Applications
+
+### Leetcode 3405
+
+- [Leetcode 3405](https://leetcode.com/problems/count-the-number-of-arrays-with-k-matching-adjacent-elements/description)
+
+This problem is a good example of how to use the algorithm.
+
+<details>
+<summary>Intuition</summary>
+
+First, fix the first element, then from the rest $n-1$ elements, we need to choose $k$ elements to be the same as the previous one.
+
+That is $\binom{n-1}{k}$ ways.
+
+Then, we need to choose $m-1$ elements from the rest $n-k-1$ elements to be different from the previous one.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def countGoodArrays(self, n: int, m: int, k: int) -> int:
+        # combinatoric
+        M = 10**9 + 7
+
+        # Precompute A = (n-1)! / (n-1-k)!  A is n-1 choose k
+        A = 1
+        if n-k-1!=0 and k!=0:
+            for i in range(n-k, n):
+                A = A * i % M
+            # Compute k! properly (1*2*...*k), not including zero
+            kf = 1
+            for i in range(1, k+1):
+                kf = kf * i % M
+            
+            # Modular inverse of kf via Fermat: kf^(M-2) mod M
+            inv_kf = pow(kf, M-2, M)
+            # print(A, kf, inv_kf)
+            # Multiply A by inv_kf, then by B and m
+            A = A * inv_kf % M
+        B = pow(m-1, n-1-k, M)
+
+        # print(A,B)
+        return m * A % M * B % M
+```
+
+</details>
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 15 (Dynamic Programming) and Chapter 31 (Number-Theoretic Algorithms).
+- [Fermat's little theorem (Wikipedia)](https://en.wikipedia.org/wiki/Fermat%27s_little_theorem)
+- [cp-algorithms — Binomial coefficients](https://cp-algorithms.com/combinatorics/binomial-coefficients.html)
+- [stackoverflow](https://stackoverflow.com/questions/10118137/fast-n-choose-k-mod-p-for-large-n)

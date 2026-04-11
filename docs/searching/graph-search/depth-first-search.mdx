@@ -1,0 +1,169 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Depth First Search
+
+Depth first search, or DFS, walks a graph by committing to a branch as far
+as possible before backing up. Starting from a source vertex it picks an
+unvisited neighbor, recurses into it, and only when that subtree is fully
+explored does it return to try the next neighbor. The call stack (or an
+explicit stack) keeps track of which vertex to resume.
+
+DFS produces a spanning forest of the graph and classifies every edge as a
+tree edge, back edge, forward edge, or cross edge using the discovery and
+finish times of its endpoints. That classification is the engine behind a
+surprising number of algorithms: cycle detection, topological sort,
+bridge and articulation-point finding, strongly connected components
+(Tarjan and Kosaraju both run DFS), and Euler-tour linearization.
+
+The implementation below returns the order in which vertices are first
+discovered, starting from vertex $0$. An iterative stack-based version is
+given to avoid Python recursion-depth issues on deep graphs.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs = [n, edges]; returns DFS preorder starting at 0."""
+    n, edges = xs
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    for nbrs in adj:
+        nbrs.sort()  # deterministic order
+    order = []
+    seen = [False] * n
+    stack = [0]
+    seen[0] = True
+    while stack:
+        u = stack.pop()
+        order.append(u)
+        # push in reverse so smallest neighbor is processed first
+        for v in reversed(adj[u]):
+            if not seen[v]:
+                seen[v] = True
+                stack.append(v)
+    return order
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <algorithm>
+#include <vector>
+
+std::vector<int> dfs(int n,
+                     const std::vector<std::pair<int,int>>& edges) {
+    std::vector<std::vector<int>> adj(n);
+    for (auto [u, v] : edges) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+    for (auto& nbrs : adj) std::sort(nbrs.begin(), nbrs.end());
+
+    std::vector<int> order;
+    std::vector<char> seen(n, 0);
+    std::vector<int> stack;
+    stack.push_back(0);
+    seen[0] = 1;
+    while (!stack.empty()) {
+        int u = stack.back(); stack.pop_back();
+        order.push_back(u);
+        for (auto it = adj[u].rbegin(); it != adj[u].rend(); ++it) {
+            int v = *it;
+            if (!seen[v]) {
+                seen[v] = 1;
+                stack.push_back(v);
+            }
+        }
+    }
+    return order;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="DFS preorder from vertex 0"
+  tests={[
+    { input: [6, [[0,1],[0,2],[1,3],[2,4],[3,5]]], expected: [0, 1, 3, 5, 2, 4] },
+    { input: [4, [[0,1],[1,2],[2,3]]], expected: [0, 1, 2, 3] },
+    { input: [3, []], expected: [0] },
+  ]}
+>
+{`
+def solve(xs):
+    n, edges = xs
+    adj = [[] for _ in range(n)]
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    for nbrs in adj:
+        nbrs.sort()
+    order = []
+    seen = [False] * n
+    stack = [0]
+    seen[0] = True
+    while stack:
+        u = stack.pop()
+        order.append(u)
+        for v in reversed(adj[u]):
+            if not seen[v]:
+                seen[v] = True
+                stack.append(v)
+    return order
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(V + E)$. Each vertex is pushed and popped at most once, and each
+adjacency-list entry is scanned a constant number of times across the
+whole traversal. Sorting the neighbor lists is an optional deterministic
+tiebreak and costs $O(E \log E)$ in total; drop it for the strict bound.
+
+### Space analysis
+
+$O(V)$ auxiliary. The explicit stack holds at most $V$ vertices in the
+worst case (a path graph), and the visited array is another $V$ bits. The
+recursive formulation uses $O(V)$ on the call stack for the same reason.
+
+### Proof of correctness
+
+We show DFS visits every vertex in the connected component of the source.
+Let $R$ be the set of vertices reachable from $s$ in the undirected graph.
+Suppose, for contradiction, that DFS terminates with some $u \in R$
+unvisited. Pick a path from $s$ to $u$ in $R$ and let $w$ be the first
+vertex on that path that is unvisited; its predecessor $p$ on the path
+is therefore visited. When DFS processed $p$ it iterated over $p$'s
+adjacency list, which contains $w$, so $w$ was either marked seen at
+that moment or was already seen — either way, visited. Contradiction. Hence every reachable
+vertex appears in the output. The traversal terminates because each vertex
+is pushed at most once and the stack shrinks by one on every pop.
+$\blacksquare$
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 22.3 (Depth-First Search).
+- Tarjan, Robert E. "Depth-first search and linear graph algorithms." *SIAM Journal on Computing*, 1(2):146-160, 1972.
+- [cp-algorithms — Depth-first search](https://cp-algorithms.com/graph/depth-first-search.html)

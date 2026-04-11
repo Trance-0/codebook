@@ -1,0 +1,192 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Bellman-Ford Algorithm
+
+Bellman-Ford solves the single-source shortest paths problem on a
+weighted directed graph that may contain negative edges. Unlike
+Dijkstra, it does not assume any sign restriction on the weights; in
+exchange, it runs in $O(V E)$ instead of $O((V + E) \log V)$. It also
+doubles as the standard certificate for the existence of a
+negative-weight cycle reachable from the source — if one exists, there
+is no well-defined shortest path, and the algorithm reports failure.
+
+The idea is disarmingly simple: relax every edge $V - 1$ times. Because
+any shortest path has at most $V - 1$ edges (otherwise it would contain
+a repeated vertex, i.e. a cycle, which could be excised without
+increasing the weight), $V - 1$ full passes are sufficient to propagate
+any finite shortest distance. A $V$-th pass that still improves some
+distance witnesses a negative cycle.
+
+The `solve` function takes `[n, edges, source]` with `edges` as
+`[u, v, w]` triples on vertices $0, 1, \dots, n - 1$, and returns the
+distance array with `10**18` for unreachable vertices. If a negative
+cycle is reachable from `source`, it returns `[]`.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """xs = [n, edges, source]. Return distances (10**18 for unreachable),
+    or [] if a negative cycle is reachable from source."""
+    n, edges, source = xs
+    INF = 10**18
+    dist = [INF] * n
+    dist[source] = 0
+    for _ in range(n - 1):
+        updated = False
+        for u, v, w in edges:
+            if dist[u] != INF and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                updated = True
+        if not updated:
+            break
+    # One more pass: if anything still improves, there is a negative cycle
+    # reachable from source.
+    for u, v, w in edges:
+        if dist[u] != INF and dist[u] + w < dist[v]:
+            return []
+    return dist
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <array>
+#include <vector>
+
+const long long INF = (long long)1e18;
+
+std::vector<long long> bellman_ford(int n,
+        const std::vector<std::array<int, 3>>& edges, int source) {
+    std::vector<long long> dist(n, INF);
+    dist[source] = 0;
+    for (int i = 0; i < n - 1; ++i) {
+        bool updated = false;
+        for (auto& e : edges) {
+            int u = e[0], v = e[1], w = e[2];
+            if (dist[u] != INF && dist[u] + w < dist[v]) {
+                dist[v] = dist[u] + w;
+                updated = true;
+            }
+        }
+        if (!updated) break;
+    }
+    for (auto& e : edges) {
+        int u = e[0], v = e[1], w = e[2];
+        if (dist[u] != INF && dist[u] + w < dist[v]) return {}; // neg cycle
+    }
+    return dist;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Bellman-Ford single-source shortest paths"
+  tests={[
+    {
+      input: [5, [[0, 1, 6], [0, 2, 7], [1, 2, 8], [1, 3, 5], [1, 4, -4], [2, 3, -3], [2, 4, 9], [3, 1, -2], [4, 0, 2], [4, 3, 7]], 0],
+      expected: [0, 2, 7, 4, -2],
+    },
+    { input: [3, [[0, 1, 4], [1, 2, -2], [2, 0, -3]], 0], expected: [] },
+    { input: [4, [[0, 1, 1], [1, 2, 2]], 0], expected: [0, 1, 3, 1000000000000000000] },
+    { input: [1, [], 0], expected: [0] },
+  ]}
+>
+{`
+def solve(xs):
+    n, edges, source = xs
+    INF = 10**18
+    dist = [INF] * n
+    dist[source] = 0
+    for _ in range(n - 1):
+        updated = False
+        for u, v, w in edges:
+            if dist[u] != INF and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                updated = True
+        if not updated:
+            break
+    for u, v, w in edges:
+        if dist[u] != INF and dist[u] + w < dist[v]:
+            return []
+    return dist
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(V E)$. Each of the $V - 1$ passes relaxes all $E$ edges. The final
+negative-cycle check is another $O(E)$. The early-exit when a pass does
+no updates often makes the algorithm much faster on easy inputs but
+does not improve the worst case.
+
+### Space analysis
+
+$O(V + E)$. The distance array is $O(V)$ and the edge list is read as
+input, so no adjacency structure is required.
+
+### Proof of correctness
+
+Let $\delta(s, v)$ denote the length of the shortest $s$-to-$v$ walk in
+the graph (taking the value $-\infty$ if the graph has a negative cycle
+reachable from $s$ on every $s$-to-$v$ path).
+
+*Claim.* If the graph has no negative cycle reachable from $s$, then
+after the $k$-th relaxation pass $dist[v] \le$ the minimum weight of
+any $s$-to-$v$ walk that uses at most $k$ edges.
+
+*Induction on $k$.* Base $k = 0$: $dist[s] = 0$ and $dist[v] = \infty$
+for $v \ne s$, and the only walk with zero edges is the empty walk at
+$s$ itself.
+
+Inductive step. Suppose the claim holds for $k - 1$, and consider a
+shortest $s$-to-$v$ walk $P$ using at most $k$ edges. If $P$ uses fewer
+than $k$ edges, the inductive hypothesis already gives
+$dist[v] \le w(P)$. Otherwise let $u$ be the predecessor of $v$ on $P$,
+so the prefix of $P$ is an $s$-to-$u$ walk of at most $k - 1$ edges
+with weight $w(P) - w(u, v)$. By induction, $dist[u] \le w(P) - w(u, v)$
+just before the $k$-th pass. During the $k$-th pass the algorithm
+relaxes $(u, v)$ and sets $dist[v] \le dist[u] + w(u, v) \le w(P)$, so
+the claim holds after pass $k$.
+
+Because any simple shortest path has at most $V - 1$ edges, and in the
+absence of a negative cycle we never improve by adding cycles, after
+$V - 1$ passes $dist[v] = \delta(s, v)$ for every vertex reachable
+from $s$. Unreachable vertices stay at $\infty$ (here encoded as
+$10^{18}$).
+
+*Negative-cycle detection.* If a negative cycle is reachable from $s$,
+then for some edge $(u, v)$ on that cycle we have $\delta(s, u) +
+w(u, v) < \delta(s, v)$ — the cycle can be traversed once more to
+strictly decrease the tentative distance of $v$. So the $V$-th pass
+will still relax some edge. Conversely, if the $V$-th pass relaxes
+some edge, then there is a walk of more than $V - 1$ edges improving
+on any $(V - 1)$-edge walk, which forces a cycle of negative total
+weight.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 24 (Single-Source Shortest Paths).
+- Bellman, R. (1958). "On a routing problem." *Quarterly of Applied Mathematics*, 16(1), 87-90.
+- [cp-algorithms — Bellman-Ford](https://cp-algorithms.com/graph/bellman_ford.html)

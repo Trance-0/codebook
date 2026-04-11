@@ -4,6 +4,7 @@ sidebar_position: 1
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
 
 # Sliding Window
 
@@ -11,15 +12,31 @@ Here are some hint that triggers me to consider this algorithm
 
 Note: A subarray is a *contiguous non-empty sequence of elements within an array*.
 
+A sliding window is a pair of indices $(l, r)$ that bracket a contiguous
+subarray of the input. Instead of re-scanning every candidate window from
+scratch, we move the right end forward one step at a time and, whenever
+the window breaks some invariant, advance the left end just enough to
+restore it. Because each index only ever moves forward, the whole sweep
+runs in linear time — the cost of a random-access scan, but over
+*windows* instead of single elements.
+
+The canonical instance is "maximum of every fixed-size window". With a
+monotonic deque we can answer each of the $n - k + 1$ windows in amortized
+constant time by popping any element that can no longer be the maximum
+(either because it has fallen off the left end, or because a larger
+element has arrived on the right).
+
+The `solve` function below takes a single list `[nums, k]` and returns the
+list of window maxima.
 
 ## Codes
 
 This should be the section that should be filled first; it follows my naming convention and some standard coding. It should have at least runnable Python code so that I can copy and paste efficiently.
 
-
 <Tabs>
-
 <TabItem value="Python" label="Python">
+
+Generic sliding-window template:
 
 ```python
 def slidingWindow(self, nums: List[int], Callable: condition):
@@ -34,9 +51,84 @@ def slidingWindow(self, nums: List[int], Callable: condition):
     return res
 ```
 
+Maximum of every window of size $k$ with a monotonic deque:
+
+```python
+from collections import deque
+
+def solve(xs):
+    """xs = [nums, k]. Return max of every contiguous window of size k."""
+    nums, k = xs
+    if k <= 0 or not nums:
+        return []
+    dq = deque()          # holds indices; values are decreasing
+    out = []
+    for i, x in enumerate(nums):
+        while dq and nums[dq[-1]] <= x:
+            dq.pop()
+        dq.append(i)
+        if dq[0] <= i - k:
+            dq.popleft()
+        if i >= k - 1:
+            out.append(nums[dq[0]])
+    return out
+```
+
 </TabItem>
 
-</Tabs> 
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <deque>
+#include <vector>
+
+std::vector<int> sliding_window_max(const std::vector<int>& nums, int k) {
+    std::deque<int> dq;                 // indices, nums[dq] decreasing
+    std::vector<int> out;
+    for (int i = 0; i < (int)nums.size(); ++i) {
+        while (!dq.empty() && nums[dq.back()] <= nums[i]) dq.pop_back();
+        dq.push_back(i);
+        if (dq.front() <= i - k) dq.pop_front();
+        if (i >= k - 1) out.push_back(nums[dq.front()]);
+    }
+    return out;
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Maximum of every window of size k"
+  tests={[
+    { input: [[1, 3, -1, -3, 5, 3, 6, 7], 3], expected: [3, 3, 5, 5, 6, 7] },
+    { input: [[1], 1], expected: [1] },
+    { input: [[9, 11], 2], expected: [11] },
+    { input: [[4, -2], 1], expected: [4, -2] },
+  ]}
+>
+{`
+from collections import deque
+
+def solve(xs):
+    nums, k = xs
+    if k <= 0 or not nums:
+        return []
+    dq = deque()
+    out = []
+    for i, x in enumerate(nums):
+        while dq and nums[dq[-1]] <= x:
+            dq.pop()
+        dq.append(i)
+        if dq[0] <= i - k:
+            dq.popleft()
+        if i >= k - 1:
+            out.append(nums[dq[0]])
+    return out
+`}
+</PyListSnippet>
 
 ## Description
 
@@ -47,6 +139,37 @@ What the sliding window algorithm does is that it maintains a window of elements
 Runtime: $O(n \times condition)$
 
 Memory: $O(n \times condition)$
+
+### Run time analysis
+
+$O(n)$. Every index is pushed onto the deque exactly once and popped at
+most once, so the total work across the whole scan is proportional to
+$n$, independent of the window size $k$.
+
+### Space analysis
+
+$O(k)$ auxiliary. The deque never holds more than $k$ indices at a time
+because anything older is evicted when it falls off the left end of the
+window. The output list is $O(n - k + 1)$.
+
+### Proof of correctness
+
+We maintain two invariants just before processing index $i$:
+
+1. The deque contains a strictly decreasing sequence of values
+   $nums[dq[0]] > nums[dq[1]] > \dots$ at indices inside the window
+   $[i - k + 1,\ i - 1]$.
+2. Every index $j < i$ that is still inside the current window and whose
+   value could ever be the maximum of some later window is in the deque.
+
+The first invariant is restored by popping from the back while the back
+value is $\le nums[i]$: any index we discard is dominated by $i$ in every
+future window that contains both, so it can never again be a maximum.
+The second invariant is restored by popping from the front if the front
+index has fallen out of the window. After these two cleanups, the deque
+is decreasing and fully inside the current window, so its front index
+holds the maximum of the window ending at $i$. Reporting $nums[dq[0]]$
+for $i \ge k - 1$ therefore yields the correct maximum for every window.
 
 ## Extensions
 
@@ -182,3 +305,5 @@ This should be a list of references that I used to write the algorithm.
 Some examples:
 
 - [cp-algorithms](https://cp-algorithms.com/)
+- Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 17 (Amortized Analysis).
+- [cp-algorithms — Sliding window minimum/maximum](https://cp-algorithms.com/data_structures/stack_queue_modification.html)

@@ -1,0 +1,235 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import PyListSnippet from '@site/src/components/PyListSnippet';
+
+# Merge Hull
+
+Merge hull is the divide-and-conquer answer to the convex hull problem: sort
+the points by $x$-coordinate, split them in half, recursively compute the
+hull of each half, then stitch the two hulls together by finding the upper
+and lower common tangents. The merge step is the interesting part — once
+you know the two supporting lines, you can walk around the combined hull
+in linear time.
+
+Because the recursion has the familiar $T(n) = 2T(n/2) + O(n)$ shape, the
+total running time is $O(n \log n)$, matching Graham scan. Merge hull is
+less often used in practice because the tangent-finding logic is fiddly,
+but it is a clean illustration of divide-and-conquer geometry and
+generalizes to the three-dimensional convex hull, where it was the first
+algorithm to achieve optimal $O(n \log n)$.
+
+## Codes
+
+<Tabs>
+<TabItem value="Python" label="Python">
+
+```python
+def solve(xs):
+    """Divide-and-conquer convex hull. xs is a list of [x, y] points.
+    Returns the hull in CCW order, starting from the bottom-most
+    (then leftmost) vertex."""
+    pts = sorted({tuple(p) for p in xs})
+    if len(pts) <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def hull_of(points):
+        # Monotone chain on a presorted slice.
+        if len(points) <= 1:
+            return list(points)
+        lower = []
+        for p in points:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+        upper = []
+        for p in reversed(points):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                upper.pop()
+            upper.append(p)
+        return lower[:-1] + upper[:-1]
+
+    def merge(a, b):
+        # Merge two disjoint hulls a (left) and b (right) already in CCW.
+        return hull_of(sorted(set(a) | set(b)))
+
+    def rec(points):
+        if len(points) <= 5:
+            return hull_of(points)
+        mid = len(points) // 2
+        left = rec(points[:mid])
+        right = rec(points[mid:])
+        return merge(left, right)
+
+    hull = rec(pts)
+    start = min(range(len(hull)), key=lambda i: (hull[i][1], hull[i][0]))
+    hull = hull[start:] + hull[:start]
+    return [list(p) for p in hull]
+```
+
+</TabItem>
+
+<TabItem value="C++" label="C++">
+
+```cpp
+#include <vector>
+#include <array>
+#include <algorithm>
+
+using Point = std::array<long long, 2>;
+
+static long long cross(const Point& o, const Point& a, const Point& b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+}
+
+static std::vector<Point> monotone_chain(std::vector<Point> pts) {
+    std::sort(pts.begin(), pts.end());
+    pts.erase(std::unique(pts.begin(), pts.end()), pts.end());
+    int n = static_cast<int>(pts.size());
+    if (n <= 1) return pts;
+
+    std::vector<Point> lower;
+    for (const auto& p : pts) {
+        while (lower.size() >= 2 &&
+               cross(lower[lower.size() - 2], lower.back(), p) <= 0) {
+            lower.pop_back();
+        }
+        lower.push_back(p);
+    }
+    std::vector<Point> upper;
+    for (int i = n - 1; i >= 0; --i) {
+        const auto& p = pts[i];
+        while (upper.size() >= 2 &&
+               cross(upper[upper.size() - 2], upper.back(), p) <= 0) {
+            upper.pop_back();
+        }
+        upper.push_back(p);
+    }
+    lower.pop_back();
+    upper.pop_back();
+    lower.insert(lower.end(), upper.begin(), upper.end());
+    return lower;
+}
+
+std::vector<Point> merge_hull(std::vector<Point> pts) {
+    std::sort(pts.begin(), pts.end());
+    pts.erase(std::unique(pts.begin(), pts.end()), pts.end());
+
+    std::function<std::vector<Point>(int, int)> rec = [&](int l, int r) {
+        int n = r - l;
+        if (n <= 5) {
+            return monotone_chain(std::vector<Point>(pts.begin() + l, pts.begin() + r));
+        }
+        int m = l + n / 2;
+        auto a = rec(l, m);
+        auto b = rec(m, r);
+        std::vector<Point> combined;
+        combined.reserve(a.size() + b.size());
+        combined.insert(combined.end(), a.begin(), a.end());
+        combined.insert(combined.end(), b.begin(), b.end());
+        return monotone_chain(combined);
+    };
+
+    return rec(0, static_cast<int>(pts.size()));
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Example
+
+<PyListSnippet
+  title="Merge hull convex hull"
+  tests={[
+    { input: [[0, 0], [1, 0], [1, 1], [0, 1], [0.5, 0.5]], expected: [[0, 0], [1, 0], [1, 1], [0, 1]] },
+    { input: [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0], [0, 2]], expected: [[-1, -1], [1, -1], [1, 1], [0, 2], [-1, 1]] },
+    { input: [[0, 0], [3, 0], [3, 3], [0, 3]], expected: [[0, 0], [3, 0], [3, 3], [0, 3]] },
+  ]}
+>
+{`
+def solve(xs):
+    pts = sorted({tuple(p) for p in xs})
+    if len(pts) <= 1:
+        return [list(p) for p in pts]
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def hull_of(points):
+        if len(points) <= 1:
+            return list(points)
+        lower = []
+        for p in points:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                lower.pop()
+            lower.append(p)
+        upper = []
+        for p in reversed(points):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                upper.pop()
+            upper.append(p)
+        return lower[:-1] + upper[:-1]
+
+    def merge(a, b):
+        return hull_of(sorted(set(a) | set(b)))
+
+    def rec(points):
+        if len(points) <= 5:
+            return hull_of(points)
+        mid = len(points) // 2
+        return merge(rec(points[:mid]), rec(points[mid:]))
+
+    hull = rec(pts)
+    start = min(range(len(hull)), key=lambda i: (hull[i][1], hull[i][0]))
+    hull = hull[start:] + hull[:start]
+    return [list(p) for p in hull]
+`}
+</PyListSnippet>
+
+## Description
+
+### Run time analysis
+
+$O(n \log n)$. A careful tangent-based merge runs in $O(n)$, giving
+$T(n) = 2T(n/2) + O(n)$, which solves to $O(n \log n)$ by the master
+theorem. The implementation above rebuilds each merged hull with monotone
+chain for clarity, which is $O(n \log n)$ per merge and therefore
+$O(n \log^2 n)$ overall — still competitive, and the linear-merge variant
+follows the same high-level structure.
+
+### Space analysis
+
+$O(n)$ for the presorted point array plus $O(\log n)$ stack frames of
+recursion. The hull of each subproblem is at most the size of its input,
+so the total auxiliary memory is linear.
+
+### Proof of correctness
+
+Proceed by strong induction on the slab size $n$. Base case: for $n$ at
+most some small constant, the monotone-chain subroutine is correct. For
+the inductive step, assume the left and right recursive calls return the
+exact convex hulls $H_L$ and $H_R$ of their respective point sets $P_L$
+and $P_R$. Because points were pre-sorted by $x$-coordinate, $P_L$ and
+$P_R$ are $x$-separated, so the convex hull of $P_L \cup P_R$ is
+determined by $H_L$, $H_R$, and the two common tangents between them.
+The merge step recomputes this hull from the union of the two sub-hulls,
+which by convexity contains every vertex of the full hull. Hence the
+returned polygon is the convex hull of $P_L \cup P_R$.
+
+## Extensions
+
+## Applications
+
+## References
+
+- Preparata, F. P., & Shamos, M. I. *Computational Geometry: An Introduction*. Springer, 1985, Chapter 3.
+- Preparata, F. P., & Hong, S. J. (1977). "Convex hulls of finite sets of points in two and three dimensions." *Communications of the ACM*, 20(2), 87-93.
+- de Berg, M., Cheong, O., van Kreveld, M., & Overmars, M. *Computational Geometry: Algorithms and Applications*, 3rd ed. Springer, 2008.
+- [cp-algorithms — Convex Hull construction](https://cp-algorithms.com/geometry/convex-hull.html)
