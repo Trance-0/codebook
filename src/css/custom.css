@@ -28,3 +28,54 @@
   --ifm-color-primary-lightest: #3c7aad;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+/* ==========================================================================
+   Home-page navbar / footer gradient fades
+   Active only when <html class="homepage"> (toggled by the home page JS).
+   ========================================================================== */
+
+/* Navbar: theme-color at top → transparent at bottom.
+   Must clear Infima's background-color (set separately via CSS var)
+   otherwise the solid color paints over our gradient. */
+html.homepage .navbar {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.92) 0%,
+    transparent 100%
+  ) !important;
+  box-shadow: none !important;
+  --ifm-navbar-background-color: transparent;
+}
+
+html.homepage[data-theme='dark'] .navbar {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(27, 27, 29, 0.92) 0%,
+    transparent 100%
+  ) !important;
+  --ifm-navbar-background-color: transparent;
+}
+
+/* Footer: transparent at top → theme-color at bottom.
+   Same approach — clear Infima's background-color. */
+html.homepage .footer {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 255, 255, 0.92) 100%
+  ) !important;
+  --ifm-footer-background-color: transparent;
+}
+
+html.homepage[data-theme='dark'] .footer {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(27, 27, 29, 0.92) 100%
+  ) !important;
+  --ifm-footer-background-color: transparent;
+}

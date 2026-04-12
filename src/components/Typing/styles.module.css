@@ -1,0 +1,23 @@
+.typing {
+  white-space: pre-wrap;
+}
+
+.cursor {
+  font-weight: 100;
+  animation: blink 0.7s step-end infinite;
+}
+
+.cursorDone {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
