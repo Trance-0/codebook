@@ -268,14 +268,14 @@ function HeroCanvas({bgSrc}) {
 
         // Dark crack shadow
         ctx.strokeStyle = 'rgba(20, 15, 10, 0.4)';
-        ctx.lineWidth = 4 * ew;
+        ctx.lineWidth = 2 * ew;
         ctx.beginPath();
         tracePoly(ctx, poly);
         ctx.stroke();
 
         // Bright refraction highlight
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-        ctx.lineWidth = 2.5 * ew;
+        ctx.lineWidth = 1.8 * ew;
         ctx.beginPath();
         tracePoly(ctx, poly);
         ctx.stroke();
