@@ -140,7 +140,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Codebook. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Trance-0. Built with Docusaurus.`,
       },
       prism: {
         theme: prismThemes.github,

@@ -33,7 +33,7 @@ export default function Typing({
     // Base delay: longer on spaces to mimic human hesitation
     const base = char === ' ' ? pauseOnSpace : speed;
     // Add random jitter so the rhythm feels organic
-    const jitter = base * JITTER * (Math.random() * 2 - 1);
+    const jitter = base * JITTER * (Math.random() * 1 - 0.5);
     const delay = Math.max(10, base + jitter);
 
     timerRef.current = setTimeout(() => {
