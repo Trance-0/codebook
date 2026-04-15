@@ -11,7 +11,7 @@
   isolation: isolate;
 }
 
-/* --- background (fallback until the canvas image loads) --- */
+/* --- background + canvas (fade in together once the image is preloaded) --- */
 
 .bg {
   position: absolute;
@@ -20,10 +20,10 @@
   background-position: center;
   background-repeat: no-repeat;
   z-index: 0;
+  opacity: 0;
+  transition: opacity 0.9s ease-out;
 }
 
-/* Light mode: white shade / Dark mode: black shade.
-   Only visible while the canvas hasn't drawn the first frame yet. */
 .bgOverlay {
   position: absolute;
   inset: 0;
@@ -36,6 +36,8 @@
   );
   z-index: 1;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.9s ease-out;
 }
 
 :global([data-theme='dark']) .bgOverlay {
@@ -48,8 +50,6 @@
   );
 }
 
-/* --- canvas --- */
-
 .canvas {
   position: absolute;
   inset: 0;
@@ -58,6 +58,14 @@
   display: block;
   z-index: 2;
   cursor: crosshair;
+  opacity: 0;
+  transition: opacity 0.9s ease-out;
+}
+
+.bg.loaded,
+.bgOverlay.loaded,
+.canvas.loaded {
+  opacity: 1;
 }
 
 /* --- title block --- */

@@ -1,4 +1,4 @@
-import {useEffect, useRef} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import useBaseUrl from '@docusaurus/useBaseUrl';
@@ -102,17 +102,13 @@ function tracePoly(ctx, poly) {
 
 // ---------------------------------------------------------------------------
 
-function HeroCanvas({bgSrc}) {
+function HeroCanvas({bgImg, className}) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !bgImg) return;
     const ctx = canvas.getContext('2d');
-
-    // Load the background image for per-cell refraction drawing.
-    const bgImg = new Image();
-    bgImg.src = bgSrc;
 
     let particles = [];
     let width = 0;
@@ -315,10 +311,14 @@ function HeroCanvas({bgSrc}) {
       canvas.removeEventListener('click', handleClick);
       themeObs.disconnect();
     };
-  }, [bgSrc]);
+  }, [bgImg]);
 
   return (
-    <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+    <canvas
+      ref={canvasRef}
+      className={`${styles.canvas}${className ? ` ${className}` : ''}`}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -327,18 +327,31 @@ function HeroCanvas({bgSrc}) {
 function Hero() {
   const {siteConfig} = useDocusaurusContext();
   const bgUrl = useBaseUrl('/img/111989155_p0.jpg');
+  const [bgImg, setBgImg] = useState(null);
+
+  // Preload the background image so the static layer and the canvas
+  // become ready at the same moment, then fade them in together.
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setBgImg(img);
+    img.src = bgUrl;
+  }, [bgUrl]);
+
+  const loaded = bgImg !== null;
+  const loadedClass = loaded ? ` ${styles.loaded}` : '';
 
   return (
     <section className={styles.hero}>
-      {/* bg + overlay divs are a fallback shown until the canvas image loads */}
       <div
-        className={styles.bg}
+        className={styles.bg + loadedClass}
         style={{backgroundImage: `url(${bgUrl})`}}
         aria-hidden="true"
       />
-      <div className={styles.bgOverlay} aria-hidden="true" />
+      <div className={styles.bgOverlay + loadedClass} aria-hidden="true" />
 
-      <BrowserOnly>{() => <HeroCanvas bgSrc={bgUrl} />}</BrowserOnly>
+      <BrowserOnly>
+        {() => <HeroCanvas bgImg={bgImg} className={loaded ? styles.loaded : ''} />}
+      </BrowserOnly>
 
       <div className={styles.titleBlock}>
         <h1 className={styles.title}>{siteConfig.title}</h1>
