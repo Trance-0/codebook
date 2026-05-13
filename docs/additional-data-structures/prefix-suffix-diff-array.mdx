@@ -123,6 +123,56 @@ A point query is then a direct lookup.
 
 ## Applications
 
+### Leetcode 1674 [Expected difficulty: 7]
+
+- [Leetcode 1674](https://leetcode.com/problems/minimum-moves-to-make-array-complementary/description)
+
+This problem is a good example of using a difference array as a 1D line sweep
+over all possible pair sums. For each mirrored pair, we mark the ranges of
+target sums that cost two moves, one move, or zero moves, then sweep the
+difference array to find the minimum total cost.
+
+<details>
+<summary>Intuition</summary>
+
+For a mirrored pair `(a, b)`, the target complementary sum can range from `2`
+to `2 * limit`. Without changing either value, only `a + b` costs zero moves.
+With one change, every sum from `min(a, b) + 1` through `max(a, b) + limit`
+is reachable. All remaining sums cost two moves. The difference array lets us
+add those cost intervals for every pair and recover the total cost for each
+target sum with one prefix pass.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def minMoves(self, nums: List[int], limit: int) -> int:
+        # use difference array
+        da = [0] * (limit * 2 + 2)
+        n = len(nums)
+        for i in range(n // 2):
+            a, b = nums[i], nums[n - 1 - i]
+            # 0 changes
+            da[a + b] -= 1
+            da[a + b + 1] += 1
+            # 1 change
+            da[min(a, b) + 1] -= 1
+            da[max(a, b) + limit + 1] += 1
+            # 2 changes
+            da[2] += 2
+            da[limit * 2 + 1] -= 2
+        res, c = n, 0
+        for i in range(2, limit * 2 + 1):
+            c += da[i]
+            res = min(res, c)
+        return res
+```
+
+</details>
+
 ## References
 
 - Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 10.
