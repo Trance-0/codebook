@@ -190,6 +190,47 @@ public:
 
 </details>
 
+### Forward reachability
+
+#### Leetcode 1871 [Expected difficulty: 7]
+
+[link to problem](https://leetcode.com/problems/jump-game-vii/description)
+
+<details>
+<summary>Intuition</summary>
+
+Convert each position into whether it is currently reachable and open.
+For every open position `h`, keep a left pointer `l` at the earliest
+candidate that could jump to `h`. Since jumps only move forward, `l`
+never needs to move backward. If every valid candidate for `h` is either
+blocked, unreachable, or too close to make at least `minJump`, then `h`
+is marked unreachable.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def canReach(self, s: str, minJump: int, maxJump: int) -> bool:
+        a = [c == '0' for c in s]
+        if not a[-1]:
+            return False
+
+        l = 0
+        for h, e in enumerate(a):
+            if not e or h == 0:
+                continue
+            while l < h - maxJump or not a[l]:
+                l += 1
+            if l > h - minJump:
+                a[h] = False
+        return a[-1]
+```
+
+</details>
+
 ## References
 
 - Cormen, Leiserson, Rivest, Stein. *Introduction to Algorithms*, 3rd ed., Chapter 2 (Getting Started).
