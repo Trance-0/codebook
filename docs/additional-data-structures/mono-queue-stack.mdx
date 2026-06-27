@@ -10,15 +10,18 @@ import PyListSnippet from '@site/src/components/PyListSnippet';
 
 A *monotonic stack* is a stack whose contents are kept in strictly increasing
 or strictly decreasing order from bottom to top. Before pushing a new value,
-any existing top elements that would violate the ordering are popped. A
-*monotonic queue* (usually implemented with a deque) extends the same idea
+any existing top elements that would violate the ordering are popped. 
+
+A *monotonic queue* (usually implemented with a deque) extends the same idea
 to a sliding window: values are pushed on the right and dropped from the
 left once they leave the window.
 
-The canonical problem shown below is "next greater element": for each index
+The canonical problem shown below is "**next greater element**": for each index
 $i$ in an array, find the smallest index $j > i$ with `nums[j] > nums[i]`,
 or $-1$ if no such index exists. A decreasing monotonic stack of pending
 indices solves it in a single left-to-right pass.
+
+There will be some cases we have right-to-left pass, then we fill the initial value with the length of the array, and then we can find the next smaller element as the left case.
 
 ## Mono stack
 
@@ -133,7 +136,7 @@ exceeded them.
 
 ### Monostack
 
-### Leetcode 1526
+#### Leetcode 1526
 
 - [Leetcode 1526](https://leetcode.com/problems/minimum-number-of-increments-on-subarrays-to-form-a-target-array/)
 
@@ -164,6 +167,120 @@ class Solution:
                 res+=i-st[-1]
                 st.append(i)
         return res
+```
+</details>
+
+#### Leetcode 84 [Expected difficulty: 13]
+
+- [Leetcode 84](https://leetcode.com/problems/largest-rectangle-in-histogram/)
+
+<details>
+<summary>Intuition</summary>
+
+Construction for mono stack is $O(n)$, and we can use the mono stack to find, suppose our $i$-th element is the minimal element in the rectangle, then we can find the left and right boundary of the rectangle, and calculate the area (greedy principle).
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def largestRectangleArea(self, heights: List[int]) -> int:
+        # two mono stack actually, query: for each i, if we use the ith height to maximal, what is the bigest rectangle we can have
+        n=len(heights)
+        # right[i] denotes the index of the next small element on the right
+        # if right[i]==n, it means there is no smaller element on it's right
+        right=[n]*n
+        st=[]
+        # enumerate from left to right, i > stack.pop() guarenteed.
+        for i in range(n):
+            while st and heights[st[-1]] > heights[i]:
+                right[st.pop()] = i
+            st.append(i)
+        
+        # left[i] denotes the index of the next small element on the left
+        # if left[i]==-1, it means there is no smaller elements on it's left
+        left=[-1]*n
+        st=[]
+        for i in range(n-1,-1,-1):
+            while st and heights[st[-1]] > heights[i]:
+                left[st.pop()] = i
+            st.append(i)
+
+        res=0
+        for i in range(n):
+            l,r=left[i],right[i]
+            # print(l,r,heights[i])
+            res=max(heights[i]*(r-l-1),res)
+        return res
+```
+</details>
+
+
+#### Leetcode 2281 [Expected difficulty: 14]
+
+- [Leetcode 2281](https://leetcode.com/problems/sum-of-total-strength-of-wizards/)
+
+<details>
+<summary>Intuition</summary>
+
+We can use a monotonic stack to keep track of left and right boundaries of the elements, and then use prefix sum to calculate the contribution for each element, as the minimal, to the total strength.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+class Solution:
+    def totalStrength(self, strength: List[int]) -> int:  
+        # reference lee's solution. I'd call this full version of mono stack.
+        
+        M=10**9+7
+        n=len(strength)
+
+        # right[i] denotes the index of the next small element on the right
+        # if right[i]==n, it means there is no smaller element on it's right
+        right=[n]*n
+        st=[]
+        # enumerate from left to right, i > stack.pop() guarenteed.
+        for i in range(n):
+            while st and strength[st[-1]] > strength[i]:
+                right[st.pop()] = i
+            st.append(i)
+        
+        # left[i] denotes the index of the next small element on the left
+        # if left[i]==-1, it means there is no smaller elements on it's left
+        left=[-1]*n
+        st=[]
+        for i in range(n-1,-1,-1):
+            # warning: eq sign used to ensure that we don't stop on 13(1) since only (1)3 will be count on right
+            while st and strength[st[-1]] >= strength[i]:
+                left[st.pop()] = i
+            st.append(i)
+
+        res=0
+        # compute prefix of prefix array
+        # for each minimal ele at index i in array (sum of all subarray including ele as smallest element is)
+        #   sum([sum[cl:cr] for cl in range(l,i) for cr in range(i,r))
+        # = sum([[pfx[cr]-pfx[cl] for cl in range(l,i)] for cr in range(i,r)])
+        # = sum(pfx[cr] for cr in range(i,r))*(r-i)-sum(pfx[cl] for cl in range(l,i))*(i-l)
+        # = (ppfx[r]-ppfx[i])*(i-l)-(ppfx[i]-ppfx[l])*(r-i)
+        res=0
+        pfx=[0]
+        for i in strength:
+            pfx.append(pfx[-1]+i)
+        ppfx=[0]
+        for i in pfx[1:]:
+            ppfx.append(ppfx[-1]+i)
+        for i in range(n):
+            l,r=left[i],right[i]
+            # note that l might be -1
+            lacc,racc=ppfx[i]-ppfx[max(0,l)],ppfx[r]-ppfx[i]
+            rn,ln=r-i,i-l
+            res+=strength[i]*(racc*ln-lacc*rn)
+        return res%M
 ```
 </details>
 
