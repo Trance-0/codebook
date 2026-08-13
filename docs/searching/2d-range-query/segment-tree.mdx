@@ -578,6 +578,107 @@ class Solution{
 
 </details>
 
+### Leetcode 2213
+
+- [Leetcode 2213](https://leetcode.com/problems/longest-substring-of-one-repeating-character/description)
+
+<details>
+<summary>Intuition</summary>
+
+The key insights here is to reduce the time of querying and updating the length of the longest substring with common character.
+
+We can use a segment tree to maintain the length of the longest substring with common character.
+
+and use fast update for segment tree to update the length of the longest substring with common character over the entire string.
+
+</details>
+
+<details>
+<summary>Solution</summary>
+
+```python
+
+class ListSegTree:
+    # Each node stores:
+    # (longest run, longest prefix run, longest suffix run, left index, right index)
+    def __init__(self, vals):
+        self.vals = list(vals)
+        self.n = len(vals)
+        if self.n == 0:
+            self.seg = [None, None]
+            return
+        # get normalized tree size, keep tree filled balanced
+        treeSize = 2 << (self.n-1).bit_length()
+        self.seg = [None] * treeSize
+        # costruct tree in query range
+        self._construct(self.vals, 1, 0, self.n-1)
+    
+    def _maintain(self, vals, segIdx):
+        # maintain the node on segment tree at segIdx
+        left = self.seg[segIdx*2]
+        right = self.seg[segIdx*2+1]
+        left_best, left_prefix, left_suffix, l, m = left
+        right_best, right_prefix, right_suffix, _, r = right
+
+        best = max(left_best, right_best)
+        prefix = left_prefix
+        suffix = right_suffix
+
+        # Equal characters at the boundary join the two runs.
+        if vals[m] == vals[m+1]:
+            best = max(best, left_suffix + right_prefix)
+            if left_prefix == m-l+1:
+                prefix += right_prefix
+            if right_suffix == r-m:
+                suffix += left_suffix
+
+        self.seg[segIdx] = (best, prefix, suffix, l, r)
+
+    def _construct(self, vals, segIdx, l, r):
+        # construct the segment tree, at segIdx, represented range is [l,r] inclusive
+        # base case, if reached the leaf node
+        if l==r:
+            self.seg[segIdx] = (1, 1, 1, l, r)
+            return
+        m=(l+r)//2
+        self._construct(vals,segIdx*2, l, m)
+        self._construct(vals,segIdx*2+1, m+1, r)
+        self._maintain(vals,segIdx)
+
+    def update(self, index, value):
+        self.vals[index] = value
+        self._update(1, 0, self.n-1, index)
+
+    def _update(self, segIdx, l, r, index):
+        if l == r:
+            return
+        m = (l+r)//2
+        if index <= m:
+            self._update(segIdx*2, l, m, index)
+        else:
+            self._update(segIdx*2+1, m+1, r, index)
+        self._maintain(self.vals, segIdx)
+
+    def longestRepeating(self) -> int:
+        # return max length of the longest substring with common character in entire array
+        return 0 if self.n == 0 else self.seg[1][0]
+
+
+class Solution:
+    def longestRepeating(self, s: str, queryCharacters: str, queryIndices: List[int]) -> List[int]:
+        # use segment tree with updates?
+        # segment tree + fast update
+        seg=ListSegTree(s)
+        res=[]
+        for i in range(len(queryIndices)):
+            seg.update(queryIndices[i],queryCharacters[i])
+            res.append(seg.longestRepeating())
+        return res
+        
+
+```
+</details>
+
 ## References
 
 - de Berg, Cheong, van Kreveld, Overmars. *Computational Geometry: Algorithms and Applications*, 3rd ed., Chapter 10.
